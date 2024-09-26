@@ -1,64 +1,41 @@
+import requests
+import pandas as pd
 import streamlit as st
 
-def main_page():
-    st.set_page_config(page_title="Welcome", layout="centered")
+# Fungsi untuk mengambil data dari Google Sheets menggunakan API Key
+def get_sheet_data_with_api_key(sheet_id, api_key, sheet_name="Sheet1"):
+    url = f"https://sheets.googleapis.com/v4/spreadsheets/{sheet_id}/values/{sheet_name}?key={api_key}"
+    response = requests.get(url)
     
-    # Custom CSS untuk styling
-    st.markdown("""
-    <style>
-    .stButton>button {
-        background: linear-gradient(to right, #00C0FF, #4E5FFF);
-        color: white;
-        font-weight: bold;
-        padding: 10px 0;
-        border: none;
-        border-radius: 25px;
-        cursor: pointer;
-    }
-    .centered-text {
-        text-align: center;
-    }
-    .stTextInput>div>div>input {
-        border-radius: 5px;
-    }
-    .input-container {
-        max-width: 300px;
-        margin: auto;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-
-    st.markdown('<h1 class="centered-text">Welcome</h1>', unsafe_allow_html=True)
-    
-    col1, col2, col3 = st.columns([1,2,1])
-    with col2:
-        username = st.text_input("Username")
-        password = st.text_input("Password", type="password")
-        if st.button("LOGIN", type="primary", use_container_width=True):
-            if username == "admin" and password == "tr1st3p":
-                st.success("Login successful!")
-                st.session_state.logged_in = True
-                st.rerun()
-            else:
-                st.error("Invalid username or password")
-    
-    st.markdown('<div class="centered-text" style="margin-top: 20px;">Don\'t have an account? <a href="#">Sign Up</a></div>', unsafe_allow_html=True)
-
-def second_page():
-    st.title("Welcome to the Second Page")
-    st.write("This page is currently empty.")
-    if st.button("Logout"):
-        st.session_state.logged_in = False
-        st.rerun()
-
-def main():
-    if 'logged_in' not in st.session_state:
-        st.session_state.logged_in = False
-
-    if st.session_state.logged_in:
-        second_page()
+    if response.status_code == 200:
+        data = response.json()
+        headers = data['values'][0]  # Mengambil header dari Google Sheets
+        rows = data['values'][1:]    # Mengambil data di bawah header
+        df = pd.DataFrame(rows, columns=headers)
+        return df
     else:
-        main_page()
+        raise Exception(f"Error fetching data: {response.status_code} - {response.text}")
 
+# Main function untuk Streamlit app
+def main():
+    st.title("Google Sheets Data with API Key")
+    
+    # Sheet ID dari link Google Sheets Anda
+    sheet_id = "1UmrtR6lqcLxClwrn99qlugMplGiY62TrWiEbzXiy1Bo"
+    
+    # API Key Anda
+    api_key = "AIzaSyAz63oyhk1_rNgXiROi2ghHX4tBoPvkDOQ"
+    
+    try:
+        # Mendapatkan data dari Google Sheets
+        df = get_sheet_data_with_api_key(sheet_id, api_key)
+        
+        # Menampilkan data di Streamlit
+        st.write("Data from Google Sheets:")
+        st.dataframe(df)
+    except Exception as e:
+        st.error(f"An error occurred: {e}")
+
+# Menjalankan aplikasi Streamlit
 if __name__ == "__main__":
     main()

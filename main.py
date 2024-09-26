@@ -38,28 +38,29 @@ def get_sheet_data(service, spreadsheet_id, range_name):
 
 
 def update_sheet_cell(service, spreadsheet_id, sheet_name, row, value):
-    # Column O corresponds to column 15 (O is the 15th letter of the alphabet)
-    range_name = f"'{sheet_name}'!O{row}"  # Column O is the Status column
+    # 'O' is the 15th column in the sheet
+    range_name = f"'{sheet_name}'!O{row}"  # Hardcoded to update column O
     body = {
-        'values': [[value]]
+        'values': [[value]]  # The new status value to update
     }
+    
     try:
+        # Perform the update operation
         result = service.spreadsheets().values().update(
             spreadsheetId=spreadsheet_id, 
             range=range_name,
-            valueInputOption='RAW', 
-            body=body).execute()
+            valueInputOption='RAW',  # RAW means the value will be input directly as-is
+            body=body
+        ).execute()
         return True
     except Exception as e:
         st.error(f"Error updating cell: {str(e)}")
         return False
-
-
-# Update the relevant part of show_main_page function
+# In your loop for saving status changes
 if 'status_updates' in st.session_state and st.session_state.status_updates and st.button("Save Status Changes", key="save_status"):
     for index, new_status in st.session_state.status_updates.items():
         try:
-            # Notice that we no longer pass 'Status' as an argument
+            # This should now properly update the 'Status' column in column O
             if update_sheet_cell(service, spreadsheet_id, sheet_name, index + 2, new_status):
                 st.success(f"Updated status for row {index + 2} to {new_status}")
             else:
@@ -70,6 +71,7 @@ if 'status_updates' in st.session_state and st.session_state.status_updates and 
     # Clear status updates after saving
     st.session_state.status_updates.clear()
     st.rerun()  # Refresh the page to show updated data
+
 
 def show_login_page():
     st.markdown("<h1 style='text-align: center;'>Login</h1>", unsafe_allow_html=True)

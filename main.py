@@ -21,15 +21,21 @@ def main():
     .stTextInput>div>div>input {
         border-radius: 5px;
     }
+    .input-container {
+        max-width: 300px;
+        margin: auto;
+    }
     </style>
     """, unsafe_allow_html=True)
 
     st.markdown('<h1 class="centered-text">Welcome</h1>', unsafe_allow_html=True)
     
-    email = st.text_input("Email")
-    password = st.text_input("Password", type="password")
-    
-    st.button("LOGIN", type="primary", use_container_width=True)
+    # Menggunakan columns untuk membuat input box lebih sempit
+    col1, col2, col3 = st.columns([1,2,1])
+    with col2:
+        email = st.text_input("Email")
+        password = st.text_input("Password", type="password")
+        st.button("LOGIN", type="primary", use_container_width=True)
     
     st.markdown('<div class="centered-text" style="margin-top: 20px;">Don\'t have an account? <a href="#">Sign Up</a></div>', unsafe_allow_html=True)
 

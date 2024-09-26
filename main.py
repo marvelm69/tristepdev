@@ -4,6 +4,9 @@ from datetime import datetime
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
 
+# Set page configuration at the very beginning
+st.set_page_config(layout="wide")
+
 def get_google_sheets_service():
     creds = Credentials.from_service_account_info(
         st.secrets["gcp_service_account"],
@@ -195,8 +198,6 @@ def main():
     if not st.session_state['logged_in']:
         show_login_page()
     else:
-        st.set_page_config(layout="wide")
-        st.title("Google Sheets Viewer")
         service = get_google_sheets_service()
         spreadsheet_id = st.secrets["google_sheets"]["spreadsheet_id"]
         sheet_name = st.secrets["google_sheets"]["worksheet_name"]

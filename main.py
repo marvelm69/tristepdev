@@ -37,30 +37,45 @@ def get_sheet_data(service, spreadsheet_id, range_name):
     return df
 
 
-def update_sheet_cell(service, spreadsheet_id, sheet_name, row, value):
-    # Column O corresponds to column 15 (O is the 15th letter of the alphabet)
-    range_name = f"'{sheet_name}'!O{row}"  # Column O is the Status column
+def update_sheet_cell(service, spreadsheet_id, sheet_name, row, column_name, value):
+    # Get the header row from the sheet
+    header_range = f"'{sheet_name}'!1:1"  # Assumes headers are in the first row
+    result = service.spreadsheets().values().get(spreadsheetId=spreadsheet_id, range=header_range).execute()
+    headers = result.get('values', [])[0]
+    
+    # Find the index of the column that matches column_name
+    try:
+        column_index = headers.index(column_name) + 1  # Google Sheets columns are 1-based
+    except ValueError:
+        st.error(f"Column '{column_name}' not found in the sheet headers.")
+        return False
+    
+    # Convert column index to letter (A, B, C, etc.)
+    column_letter = chr(64 + column_index)  # Converts 1 -> A, 2 -> B, etc.
+    range_name = f"'{sheet_name}'!{column_letter}{row}"  # E.g., 'Status' column updates at this row
+    
     body = {
         'values': [[value]]
     }
+    
     try:
         result = service.spreadsheets().values().update(
             spreadsheetId=spreadsheet_id, 
             range=range_name,
-            valueInputOption='RAW', 
-            body=body).execute()
+            valueInputOption='RAW',  # RAW means the value will be input directly as-is
+            body=body
+        ).execute()
         return True
     except Exception as e:
         st.error(f"Error updating cell: {str(e)}")
         return False
 
-
-# Update the relevant part of show_main_page function
+# In your loop for saving status changes
 if 'status_updates' in st.session_state and st.session_state.status_updates and st.button("Save Status Changes", key="save_status"):
     for index, new_status in st.session_state.status_updates.items():
         try:
-            # Notice that we no longer pass 'Status' as an argument
-            if update_sheet_cell(service, spreadsheet_id, sheet_name, index + 2, new_status):
+            # Update the 'Status' column dynamically by name
+            if update_sheet_cell(service, spreadsheet_id, sheet_name, index + 2, 'Status', new_status):
                 st.success(f"Updated status for row {index + 2} to {new_status}")
             else:
                 st.error(f"Failed to update status for row {index + 2}")
@@ -70,8 +85,6 @@ if 'status_updates' in st.session_state and st.session_state.status_updates and 
     # Clear status updates after saving
     st.session_state.status_updates.clear()
     st.rerun()  # Refresh the page to show updated data
-
-
 
 def show_login_page():
     st.markdown("<h1 style='text-align: center;'>Login</h1>", unsafe_allow_html=True)

@@ -151,7 +151,7 @@ def show_main_page(service, spreadsheet_id, sheet_name):
         
         # Separate section for status input
         st.header("Update Status")
-        status_updates = {}
+        status_updates = {}  # Initialize status_updates dictionary
         for index, row in filtered_df.iterrows():
             col1, col2 = st.columns([3, 1])
             with col1:
@@ -169,9 +169,8 @@ def show_main_page(service, spreadsheet_id, sheet_name):
         # Save button
         if status_updates and st.button("Save Status Changes"):
             for index, new_status in status_updates.items():
-                range_name = f"{sheet_name}!Status{index + 2}"
                 try:
-                    if update_sheet_cell(service, spreadsheet_id, range_name, new_status):
+                    if update_sheet_cell(service, spreadsheet_id, sheet_name, index + 2, 'Status', new_status):
                         st.success(f"Updated status for row {index + 2} to {new_status}")
                     else:
                         st.error(f"Failed to update status for row {index + 2}")

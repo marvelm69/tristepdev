@@ -37,7 +37,7 @@ def show_login_page():
 def check_credentials(username, password):
     # Contoh: username = "admin", password = "password123"
     correct_username = "admin"
-    correct_password = "tr1st3p"  # SHA-256 hash of "password123"
+    correct_password = "5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8"  # SHA-256 hash of "password123"
     return username == correct_username and hashlib.sha256(password.encode()).hexdigest() == correct_password
 
 # Fungsi untuk menampilkan halaman pertama

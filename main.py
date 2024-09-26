@@ -25,12 +25,13 @@ def get_sheet_data_with_api_key(sheet_id, api_key, sheet_name):
         raise Exception(f"Error fetching data: {response.status_code} - {response.text}")
 
 def show_login_page():
-    st.header("Login")
-    col1, col2, col3 = st.columns([1,2,1])
+    st.markdown("<h1 style='text-align: center;'>Login</h1>", unsafe_allow_html=True)
+    
+    col1, col2, col3 = st.columns([1,1,1])
     with col2:
         username = st.text_input("Username", key="username")
         password = st.text_input("Password", type="password", key="password")
-        if st.button("Login"):
+        if st.button("Login", use_container_width=True):
             if check_credentials(username, password):
                 st.session_state['logged_in'] = True
                 st.rerun()
@@ -62,19 +63,19 @@ def show_main_page(sheet_id, api_key, sheet_name):
         st.info("Please check your Sheet ID, API Key, and Sheet Name.")
 
 def main():
-    st.set_page_config(layout="wide")
-    st.title("Google Sheets Viewer")
-    
     if 'logged_in' not in st.session_state:
         st.session_state['logged_in'] = False
 
     if not st.session_state['logged_in']:
         show_login_page()
     else:
+        st.set_page_config(layout="wide")
+        st.title("Google Sheets Viewer")
         sheet_id = "1UmrtR6lqcLxClwrn99qlugMplGiY62TrWiEbzXiy1Bo"
         api_key = "AIzaSyAz63oyhk1_rNgXiROi2ghHX4tBoPvkDOQ"
         sheet_name = "Form Responses 1"
         show_main_page(sheet_id, api_key, sheet_name)
+
 
 if __name__ == "__main__":
     main()

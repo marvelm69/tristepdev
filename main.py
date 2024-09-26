@@ -27,13 +27,20 @@ def get_sheet_data_with_api_key(sheet_id, api_key, sheet_name):
         raise Exception(f"Error fetching data: {response.status_code} - {response.text}")
         
 def update_sheet_cell(sheet_id, api_key, sheet_name, cell, value):
-    url = f"https://sheets.googleapis.com/v4/spreadsheets/{sheet_id}/values/{sheet_name}!{cell}?valueInputOption=RAW&key={api_key}"
+    url = f"https://sheets.googleapis.com/v4/spreadsheets/{sheet_id}/values/{sheet_name}!{cell}:update?valueInputOption=RAW&key={api_key}"
     headers = {'Content-Type': 'application/json'}
     data = {
+        "range": f"{sheet_name}!{cell}",
+        "majorDimension": "ROWS",
         "values": [[value]]
     }
     response = requests.put(url, headers=headers, json=data)
-    return response.status_code == 200
+    
+    if response.status_code == 200:
+        return True
+    else:
+        print(f"Error: {response.status_code}, {response.text}")
+        return False
 
 def show_login_page():
     st.markdown("<h1 style='text-align: center;'>Login</h1>", unsafe_allow_html=True)

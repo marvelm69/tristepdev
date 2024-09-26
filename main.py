@@ -34,15 +34,36 @@ def get_sheet_data(service, spreadsheet_id, range_name):
     return df
 
 
-def update_sheet_cell(service, spreadsheet_id, range_name, value):
+def update_sheet_cell(service, spreadsheet_id, sheet_name, row, column, value):
+    range_name = f"'{sheet_name}'!{column}{row}"
     body = {
         'values': [[value]]
     }
-    result = service.spreadsheets().values().update(
-        spreadsheetId=spreadsheet_id, range=range_name,
-        valueInputOption='RAW', body=body).execute()
-    return result
+    try:
+        result = service.spreadsheets().values().update(
+            spreadsheetId=spreadsheet_id, 
+            range=range_name,
+            valueInputOption='RAW', 
+            body=body).execute()
+        return True
+    except Exception as e:
+        st.error(f"Error updating cell: {str(e)}")
+        return False
 
+# Update the relevant part of show_main_page function
+if status_updates and st.button("Save Status Changes"):
+    for index, new_status in status_updates.items():
+        try:
+            if update_sheet_cell(service, spreadsheet_id, sheet_name, index + 2, 'Status', new_status):
+                st.success(f"Updated status for row {index + 2} to {new_status}")
+            else:
+                st.error(f"Failed to update status for row {index + 2}")
+        except Exception as e:
+            st.error(f"Error updating row {index + 2}: {str(e)}")
+    
+    # Clear status updates after saving
+    status_updates.clear()
+    st.rerun()  # Refresh the page to show updated data
 def show_login_page():
     st.markdown("<h1 style='text-align: center;'>Login</h1>", unsafe_allow_html=True)
     

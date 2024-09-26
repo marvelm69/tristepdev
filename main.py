@@ -8,14 +8,14 @@ from datetime import datetime
 
 # OAuth 2.0 credentials
 CLIENT_CONFIG = {
-    "web": {
+    "installed": {
         "client_id": st.secrets["oauth_client"]["client_id"],
         "project_id": st.secrets["oauth_client"]["project_id"],
         "auth_uri": st.secrets["oauth_client"]["auth_uri"],
         "token_uri": st.secrets["oauth_client"]["token_uri"],
         "auth_provider_x509_cert_url": st.secrets["oauth_client"]["auth_provider_x509_cert_url"],
         "client_secret": st.secrets["oauth_client"]["client_secret"],
-        "redirect_uris": [st.secrets["oauth_client"]["redirect_uri"]]
+        "redirect_uris": st.secrets["oauth_client"]["redirect_uris"]
     }
 }
 
@@ -26,7 +26,7 @@ def get_credentials():
         flow = Flow.from_client_config(
             client_config=CLIENT_CONFIG,
             scopes=SCOPES,
-            redirect_uri=CLIENT_CONFIG['web']['redirect_uris'][0]
+            redirect_uri=CLIENT_CONFIG['installed']['redirect_uris'][0]
         )
         
         auth_url, _ = flow.authorization_url(prompt='consent')

@@ -25,6 +25,7 @@ def get_sheet_data_with_api_key(sheet_id, api_key, sheet_name):
             raise Exception("No data found in the sheet or sheet is empty")
     else:
         raise Exception(f"Error fetching data: {response.status_code} - {response.text}")
+        
 def update_sheet_cell(sheet_id, api_key, sheet_name, cell, value):
     url = f"https://sheets.googleapis.com/v4/spreadsheets/{sheet_id}/values/{sheet_name}!{cell}?valueInputOption=RAW&key={api_key}"
     headers = {'Content-Type': 'application/json'}

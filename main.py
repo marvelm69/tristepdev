@@ -51,8 +51,8 @@ def update_sheet_cell(service, spreadsheet_id, sheet_name, row, column, value):
         return False
 
 # Update the relevant part of show_main_page function
-if status_updates and st.button("Save Status Changes"):
-    for index, new_status in status_updates.items():
+if 'status_updates' in st.session_state and st.session_state.status_updates and st.button("Save Status Changes"):
+    for index, new_status in st.session_state.status_updates.items():
         try:
             if update_sheet_cell(service, spreadsheet_id, sheet_name, index + 2, 'Status', new_status):
                 st.success(f"Updated status for row {index + 2} to {new_status}")
@@ -62,8 +62,9 @@ if status_updates and st.button("Save Status Changes"):
             st.error(f"Error updating row {index + 2}: {str(e)}")
     
     # Clear status updates after saving
-    status_updates.clear()
+    st.session_state.status_updates.clear()
     st.rerun()  # Refresh the page to show updated data
+
 def show_login_page():
     st.markdown("<h1 style='text-align: center;'>Login</h1>", unsafe_allow_html=True)
     
@@ -186,6 +187,7 @@ def show_main_page(service, spreadsheet_id, sheet_name):
     except Exception as e:
         st.error(f"An error occurred: {str(e)}")
         st.info("Please check your Sheet ID and Sheet Name in the secrets configuration.")
+        
 def main():
     if 'logged_in' not in st.session_state:
         st.session_state['logged_in'] = False

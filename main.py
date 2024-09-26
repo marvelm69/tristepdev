@@ -1,4 +1,5 @@
 import streamlit as st
+from streamlit.runtime.scriptrunner import RerunException
 
 def main_page():
     st.set_page_config(page_title="Welcome", layout="centered")
@@ -38,7 +39,7 @@ def main_page():
             if username == "admin" and password == "tr1st3p":
                 st.success("Login successful!")
                 st.session_state.logged_in = True
-                st.experimental_rerun()
+                raise RerunException()
             else:
                 st.error("Invalid username or password")
     
@@ -49,7 +50,7 @@ def second_page():
     st.write("This page is currently empty.")
     if st.button("Logout"):
         st.session_state.logged_in = False
-        st.experimental_rerun()
+        raise RerunException()
 
 def main():
     if 'logged_in' not in st.session_state:
@@ -61,4 +62,7 @@ def main():
         main_page()
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except RerunException:
+        st.rerun()

@@ -4,6 +4,7 @@ from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
 from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
 from datetime import datetime
 
 # OAuth 2.0 credentials
@@ -23,6 +24,12 @@ SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
 
 def get_credentials():
     if 'credentials' not in st.session_state:
+        st.session_state.credentials = None
+
+    if st.session_state.credentials and st.session_state.credentials.expired and st.session_state.credentials.refresh_token:
+        st.session_state.credentials.refresh(Request())
+    
+    if not st.session_state.credentials:
         flow = Flow.from_client_config(
             client_config=CLIENT_CONFIG,
             scopes=SCOPES,
@@ -37,45 +44,65 @@ def get_credentials():
         code = st.text_input("Enter the code from the redirect URL:")
         
         if code:
-            flow.fetch_token(code=code)
-            st.session_state.credentials = flow.credentials
+            try:
+                flow.fetch_token(code=code)
+                st.session_state.credentials = flow.credentials
+                st.rerun()  # Rerun the app to update the UI
+            except Exception as e:
+                st.error(f"Authentication failed: {str(e)}")
     
     return st.session_state.credentials
 
 def get_sheet_data(sheet_id, sheet_name):
     credentials = get_credentials()
-    service = build('sheets', 'v4', credentials=credentials)
+    if not credentials:
+        st.error("Authentication required. Please authenticate to access the sheet.")
+        return None
     
-    result = service.spreadsheets().values().get(
-        spreadsheetId=sheet_id, range=sheet_name).execute()
-    
-    values = result.get('values', [])
-    if not values:
-        raise Exception("No data found in the sheet or sheet is empty")
-    
-    headers = values[0]
-    rows = values[1:]
-    
-    max_cols = max(len(headers), max(len(row) for row in rows))
-    headers = headers + [''] * (max_cols - len(headers))
-    rows = [row + [''] * (max_cols - len(row)) for row in rows]
-    
-    df = pd.DataFrame(rows, columns=headers)
-    return df
+    try:
+        service = build('sheets', 'v4', credentials=credentials)
+        result = service.spreadsheets().values().get(
+            spreadsheetId=sheet_id, range=sheet_name).execute()
+        
+        values = result.get('values', [])
+        if not values:
+            st.warning("No data found in the sheet or sheet is empty")
+            return None
+        
+        headers = values[0]
+        rows = values[1:]
+        
+        max_cols = max(len(headers), max(len(row) for row in rows))
+        headers = headers + [''] * (max_cols - len(headers))
+        rows = [row + [''] * (max_cols - len(row)) for row in rows]
+        
+        df = pd.DataFrame(rows, columns=headers)
+        return df
+    except HttpError as error:
+        st.error(f"An error occurred: {error}")
+        return None
 
 def update_sheet_cell(sheet_id, sheet_name, cell, value):
     credentials = get_credentials()
-    service = build('sheets', 'v4', credentials=credentials)
+    if not credentials:
+        st.error("Authentication required. Please authenticate to update the sheet.")
+        return False
     
-    body = {
-        'values': [[value]]
-    }
-    
-    result = service.spreadsheets().values().update(
-        spreadsheetId=sheet_id, range=f"{sheet_name}!{cell}",
-        valueInputOption='RAW', body=body).execute()
-    
-    return result.get('updatedCells') == 1
+    try:
+        service = build('sheets', 'v4', credentials=credentials)
+        
+        body = {
+            'values': [[value]]
+        }
+        
+        result = service.spreadsheets().values().update(
+            spreadsheetId=sheet_id, range=f"{sheet_name}!{cell}",
+            valueInputOption='RAW', body=body).execute()
+        
+        return result.get('updatedCells') == 1
+    except HttpError as error:
+        st.error(f"An error occurred while updating the sheet: {error}")
+        return False
 
 def show_login_page():
     st.markdown("<h1 style='text-align: center;'>Login</h1>", unsafe_allow_html=True)
@@ -101,12 +128,13 @@ def show_main_page(sheet_id, sheet_name):
     with col3:
         if st.button("Logout"):
             st.session_state['logged_in'] = False
+            st.session_state.credentials = None  # Clear credentials on logout
             st.rerun()
     
     st.header("Data from Google Sheets")
-    try:
-        df = get_sheet_data(sheet_id, sheet_name)
-        
+    df = get_sheet_data(sheet_id, sheet_name)
+    
+    if df is not None:
         # Convert 'Timestamp' column to datetime
         df['Timestamp'] = pd.to_datetime(df['Timestamp'])
         
@@ -168,20 +196,17 @@ def show_main_page(sheet_id, sheet_name):
             
             # Clear status updates after saving
             status_updates.clear()
-        
-    except Exception as e:
-        st.error(f"An error occurred: {e}")
-        st.info("Please check your Sheet ID and Sheet Name.")
 
 def main():
+    st.set_page_config(layout="wide")
+    st.title("Google Sheets Viewer")
+
     if 'logged_in' not in st.session_state:
         st.session_state['logged_in'] = False
 
     if not st.session_state['logged_in']:
         show_login_page()
     else:
-        st.set_page_config(layout="wide")
-        st.title("Google Sheets Viewer")
         sheet_id = "1UmrtR6lqcLxClwrn99qlugMplGiY62TrWiEbzXiy1Bo"
         sheet_name = "Form Responses 1"
         show_main_page(sheet_id, sheet_name)

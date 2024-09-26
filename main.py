@@ -54,7 +54,7 @@ def update_sheet_cell(service, spreadsheet_id, sheet_name, row, column, value):
         return False
 
 # Update the relevant part of show_main_page function
-if 'status_updates' in st.session_state and st.session_state.status_updates and st.button("Save Status Changes"):
+if 'status_updates' in st.session_state and st.session_state.status_updates and st.button("Save Status Changes", key="save_status"):
     for index, new_status in st.session_state.status_updates.items():
         try:
             if update_sheet_cell(service, spreadsheet_id, sheet_name, index + 2, 'Status', new_status):
@@ -75,7 +75,7 @@ def show_login_page():
     with col2:
         username = st.text_input("Username", key="username")
         password = st.text_input("Password", type="password", key="password")
-        if st.button("Login", use_container_width=True):
+        if st.button("Login", use_container_width=True, key="login_button"):
             if check_credentials(username, password):
                 st.session_state['logged_in'] = True
                 st.rerun()
@@ -91,7 +91,7 @@ def show_main_page(service, spreadsheet_id, sheet_name):
 
     col1, col2, col3 = st.columns([3,1,1])
     with col3:
-        if st.button("Logout"):
+        if st.button("Logout", key="logout_button"):
             st.session_state['logged_in'] = False
             st.rerun()
     
@@ -173,7 +173,7 @@ def show_main_page(service, spreadsheet_id, sheet_name):
                     st.session_state.status_updates[index] = new_status
         
         # Save button
-        if st.session_state.status_updates and st.button("Save Status Changes"):
+        if st.session_state.status_updates and st.button("Save Status Changes", key="save_status_changes"):
             for index, new_status in st.session_state.status_updates.items():
                 try:
                     if update_sheet_cell(service, spreadsheet_id, sheet_name, index + 2, 'Status', new_status):

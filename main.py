@@ -53,11 +53,40 @@ def show_main_page(sheet_id, api_key, sheet_name):
     st.header("Data from Google Sheets")
     try:
         df = get_sheet_data_with_api_key(sheet_id, api_key, sheet_name)
-        st.dataframe(df)
         
-        empty_cols = df.columns[df.isna().all()].tolist()
+        # Convert 'Timestamp' column to datetime
+        df['Timestamp'] = pd.to_datetime(df['Timestamp'])
+        
+        # Create filters
+        col1, col2 = st.columns(2)
+        with col1:
+            years = sorted(df['Timestamp'].dt.year.unique(), reverse=True)
+            selected_year = st.selectbox("Select Year", years)
+        
+        with col2:
+            months = [
+                "January", "February", "March", "April", "May", "June", 
+                "July", "August", "September", "October", "November", "December"
+            ]
+            selected_month = st.selectbox("Select Month", months)
+        
+        # Apply filters
+        filtered_df = df[
+            (df['Timestamp'].dt.year == selected_year) & 
+            (df['Timestamp'].dt.month == months.index(selected_month) + 1)
+        ]
+        
+        # Display filtered data
+        st.dataframe(filtered_df)
+        
+        # Display information about empty columns
+        empty_cols = filtered_df.columns[filtered_df.isna().all()].tolist()
         if empty_cols:
-            st.warning(f"Kolom berikut kosong atau tidak memiliki data: {', '.join(empty_cols)}")
+            st.warning(f"The following columns are empty or have no data: {', '.join(empty_cols)}")
+        
+        # Display row count
+        st.info(f"Showing {len(filtered_df)} rows for {selected_month} {selected_year}")
+        
     except Exception as e:
         st.error(f"An error occurred: {e}")
         st.info("Please check your Sheet ID, API Key, and Sheet Name.")

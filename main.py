@@ -6,10 +6,10 @@ def main():
     st.title("Login")
 
     # Create input fields
-    email = st.text_input("Email")
+    email = st.text_input("Username")
     password = st.text_input("Password", type="password")
 
-    # Create login button with gradient
+    # Create login button
     login_button = st.button(
         "LOGIN",
         type="primary",
@@ -18,12 +18,11 @@ def main():
 
     # Check login credentials when button is pressed
     if login_button:
-        # Here you would typically check against a database
-        # For this example, we'll use a simple condition
-        if email == "admin@example.com" and password == "password":
+        # Check if the username is 'admin' and the password is 'tr1st3p'
+        if email == "admin" and password == "tr1st3p":
             st.success("Login successful!")
         else:
-            st.error("Invalid email or password")
+            st.error("Invalid username or password")
 
     # Add some space and a footer
     st.markdown("<br><br>", unsafe_allow_html=True)

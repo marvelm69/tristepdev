@@ -2,7 +2,6 @@ import requests
 import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
-import hashlib
 
 # Fungsi untuk mengambil data dari Google Sheets menggunakan API Key
 def get_sheet_data_with_api_key(sheet_id, api_key, sheet_name):
@@ -29,7 +28,7 @@ def show_login_page():
     if st.button("Login"):
         if check_credentials(username, password):
             st.session_state['logged_in'] = True
-            st.experimental_rerun()
+            st.rerun()
         else:
             st.error("Invalid username or password")
 
@@ -89,7 +88,7 @@ def main():
         # Tombol logout
         if st.sidebar.button("Logout"):
             st.session_state['logged_in'] = False
-            st.experimental_rerun()
+            st.rerun()
 
 # Menjalankan aplikasi Streamlit
 if __name__ == "__main__":

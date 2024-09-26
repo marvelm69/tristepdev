@@ -13,6 +13,12 @@ def get_sheet_data_with_api_key(sheet_id, api_key, sheet_name):
         if 'values' in data and len(data['values']) > 1:
             headers = data['values'][0]  # Mengambil header dari Google Sheets
             rows = data['values'][1:]    # Mengambil data di bawah header
+            
+            # Menangani ketidaksesuaian jumlah kolom
+            max_cols = max(len(headers), max(len(row) for row in rows))
+            headers = headers + [''] * (max_cols - len(headers))
+            rows = [row + [''] * (max_cols - len(row)) for row in rows]
+            
             df = pd.DataFrame(rows, columns=headers)
             return df
         else:
@@ -47,6 +53,11 @@ def show_page_one(sheet_id, api_key, sheet_name):
         
         # Menampilkan data di Streamlit
         st.dataframe(df)
+        
+        # Menampilkan informasi tentang kolom kosong
+        empty_cols = df.columns[df.isna().all()].tolist()
+        if empty_cols:
+            st.warning(f"Kolom berikut kosong atau tidak memiliki data: {', '.join(empty_cols)}")
     except Exception as e:
         st.error(f"An error occurred: {e}")
         st.info("Please check your Sheet ID, API Key, and Sheet Name.")

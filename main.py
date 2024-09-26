@@ -33,12 +33,11 @@ def show_login_page():
         else:
             st.error("Invalid username or password")
 
-# Fungsi untuk memeriksa kredensial (contoh sederhana, ganti dengan sistem autentikasi yang lebih aman)
+# Fungsi untuk memeriksa kredensial
 def check_credentials(username, password):
-    # Contoh: username = "admin", password = "password123"
     correct_username = "admin"
-    correct_password = "5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8"  # SHA-256 hash of "password123"
-    return username == correct_username and hashlib.sha256(password.encode()).hexdigest() == correct_password
+    correct_password = "tr1st3p"
+    return username == correct_username and password == correct_password
 
 # Fungsi untuk menampilkan halaman pertama
 def show_page_one(sheet_id, api_key, sheet_name):

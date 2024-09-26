@@ -1,39 +1,38 @@
-import requests
 import pandas as pd
 import streamlit as st
-import streamlit.components.v1 as components
 from datetime import datetime
+from google.oauth2.service_account import Credentials
+from googleapiclient.discovery import build
 
+def get_google_sheets_service():
+    creds = Credentials.from_service_account_info(
+        st.secrets["gcp_service_account"],
+        scopes=['https://www.googleapis.com/auth/spreadsheets']
+    )
+    service = build('sheets', 'v4', credentials=creds)
+    return service
 
-def get_sheet_data_with_api_key(sheet_id, api_key, sheet_name):
-    url = f"https://sheets.googleapis.com/v4/spreadsheets/{sheet_id}/values/{sheet_name}?key={api_key}"
-    response = requests.get(url)
+def get_sheet_data(service, spreadsheet_id, range_name):
+    sheet = service.spreadsheets()
+    result = sheet.values().get(spreadsheetId=spreadsheet_id, range=range_name).execute()
+    values = result.get('values', [])
     
-    if response.status_code == 200:
-        data = response.json()
-        if 'values' in data and len(data['values']) > 1:
-            headers = data['values'][0]
-            rows = data['values'][1:]
-            
-            max_cols = max(len(headers), max(len(row) for row in rows))
-            headers = headers + [''] * (max_cols - len(headers))
-            rows = [row + [''] * (max_cols - len(row)) for row in rows]
-            
-            df = pd.DataFrame(rows, columns=headers)
-            return df
-        else:
-            raise Exception("No data found in the sheet or sheet is empty")
-    else:
-        raise Exception(f"Error fetching data: {response.status_code} - {response.text}")
-        
-def update_sheet_cell(sheet_id, api_key, sheet_name, cell, value):
-    url = f"https://sheets.googleapis.com/v4/spreadsheets/{sheet_id}/values/{sheet_name}!{cell}?valueInputOption=RAW&key={api_key}"
-    headers = {'Content-Type': 'application/json'}
-    data = {
-        "values": [[value]]
+    if not values:
+        raise Exception('No data found.')
+    
+    headers = values[0]
+    rows = values[1:]
+    df = pd.DataFrame(rows, columns=headers)
+    return df
+
+def update_sheet_cell(service, spreadsheet_id, range_name, value):
+    body = {
+        'values': [[value]]
     }
-    response = requests.put(url, headers=headers, json=data)
-    return response.status_code == 200
+    result = service.spreadsheets().values().update(
+        spreadsheetId=spreadsheet_id, range=range_name,
+        valueInputOption='RAW', body=body).execute()
+    return result
 
 def show_login_page():
     st.markdown("<h1 style='text-align: center;'>Login</h1>", unsafe_allow_html=True)
@@ -50,11 +49,9 @@ def show_login_page():
                 st.error("Invalid username or password")
 
 def check_credentials(username, password):
-    correct_username = "admin"
-    correct_password = "tr1st3p"
-    return username == correct_username and password == correct_password
+    return username == st.secrets["app"]["username"] and password == st.secrets["app"]["password"]
 
-def show_main_page(sheet_id, api_key, sheet_name):
+def show_main_page(service, spreadsheet_id, sheet_name):
     col1, col2, col3 = st.columns([3,1,1])
     with col3:
         if st.button("Logout"):
@@ -63,7 +60,7 @@ def show_main_page(sheet_id, api_key, sheet_name):
     
     st.header("Data from Google Sheets")
     try:
-        df = get_sheet_data_with_api_key(sheet_id, api_key, sheet_name)
+        df = get_sheet_data(service, spreadsheet_id, sheet_name)
         
         # Convert 'Timestamp' column to datetime
         df['Timestamp'] = pd.to_datetime(df['Timestamp'])
@@ -118,8 +115,8 @@ def show_main_page(sheet_id, api_key, sheet_name):
         # Save button
         if st.button("Save Status Changes"):
             for index, new_status in status_updates.items():
-                cell = f"Status{index + 2}"  # Assuming 'Status' is the column name
-                if update_sheet_cell(sheet_id, api_key, sheet_name, cell, new_status):
+                range_name = f"{sheet_name}!Status{index + 2}"
+                if update_sheet_cell(service, spreadsheet_id, range_name, new_status):
                     st.success(f"Updated status for row {index + 2} to {new_status}")
                 else:
                     st.error(f"Failed to update status for row {index + 2}")
@@ -129,7 +126,7 @@ def show_main_page(sheet_id, api_key, sheet_name):
         
     except Exception as e:
         st.error(f"An error occurred: {e}")
-        st.info("Please check your Sheet ID, API Key, and Sheet Name.")
+        st.info("Please check your Sheet ID and Sheet Name in the secrets configuration.")
 
 def main():
     if 'logged_in' not in st.session_state:
@@ -140,11 +137,10 @@ def main():
     else:
         st.set_page_config(layout="wide")
         st.title("Google Sheets Viewer")
-        sheet_id = "1UmrtR6lqcLxClwrn99qlugMplGiY62TrWiEbzXiy1Bo"
-        api_key = "AIzaSyAz63oyhk1_rNgXiROi2ghHX4tBoPvkDOQ"
-        sheet_name = "Form Responses 1"
-        show_main_page(sheet_id, api_key, sheet_name)
-
+        service = get_google_sheets_service()
+        spreadsheet_id = st.secrets["google_sheets"]["spreadsheet_id"]
+        sheet_name = st.secrets["google_sheets"]["worksheet_name"]
+        show_main_page(service, spreadsheet_id, sheet_name)
 
 if __name__ == "__main__":
     main()

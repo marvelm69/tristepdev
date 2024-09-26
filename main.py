@@ -87,7 +87,20 @@ def show_main_page(sheet_id, api_key, sheet_name):
             (df['Timestamp'].dt.month == months.index(selected_month) + 1)
         ]
         
-        # Display filtered data with status dropdown
+        # Display filtered data
+        st.dataframe(filtered_df)
+        
+        # Display information about empty columns
+        empty_cols = filtered_df.columns[filtered_df.isna().all()].tolist()
+        if empty_cols:
+            st.warning(f"The following columns are empty or have no data: {', '.join(empty_cols)}")
+        
+        # Display row count
+        st.info(f"Showing {len(filtered_df)} rows for {selected_month} {selected_year}")
+        
+        # Separate section for status input
+        st.header("Update Status")
+        status_updates = {}
         for index, row in filtered_df.iterrows():
             col1, col2 = st.columns([3, 1])
             with col1:
@@ -100,19 +113,19 @@ def show_main_page(sheet_id, api_key, sheet_name):
                                           index=status_options.index(current_status) if current_status in status_options else 0,
                                           key=f"status_{index}")
                 if new_status != current_status:
-                    cell = f"Status{index + 2}"  # Assuming 'Status' is the column name
-                    if update_sheet_cell(sheet_id, api_key, sheet_name, cell, new_status):
-                        st.success(f"Updated status for row {index + 2} to {new_status}")
-                    else:
-                        st.error(f"Failed to update status for row {index + 2}")
+                    status_updates[index] = new_status
         
-        # Display information about empty columns
-        empty_cols = filtered_df.columns[filtered_df.isna().all()].tolist()
-        if empty_cols:
-            st.warning(f"The following columns are empty or have no data: {', '.join(empty_cols)}")
-        
-        # Display row count
-        st.info(f"Showing {len(filtered_df)} rows for {selected_month} {selected_year}")
+        # Save button
+        if st.button("Save Status Changes"):
+            for index, new_status in status_updates.items():
+                cell = f"Status{index + 2}"  # Assuming 'Status' is the column name
+                if update_sheet_cell(sheet_id, api_key, sheet_name, cell, new_status):
+                    st.success(f"Updated status for row {index + 2} to {new_status}")
+                else:
+                    st.error(f"Failed to update status for row {index + 2}")
+            
+            # Clear status updates after saving
+            status_updates.clear()
         
     except Exception as e:
         st.error(f"An error occurred: {e}")

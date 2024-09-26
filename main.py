@@ -9,11 +9,14 @@ from google.auth.transport.requests import Request
 # Define Google Sheets API Scopes
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
 
-# Use credentials from Streamlit Secrets
+# Function to get Google Sheets API credentials from Streamlit secrets
 def get_credentials():
     creds = None
+    # Check if token.json exists, it stores credentials for re-use
     if 'token.json' in os.listdir():
         creds = Credentials.from_authorized_user_file('token.json', SCOPES)
+    
+    # If there are no valid credentials, authenticate the user
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
@@ -28,22 +31,23 @@ def get_credentials():
                     "redirect_uris": [st.secrets["oauth_client"]["redirect_uri"]],
                 }
             }
+            # Start OAuth flow to authenticate user
             flow = InstalledAppFlow.from_client_config(client_config, SCOPES)
             creds = flow.run_local_server(port=0)
         
-        # Save the credentials to a file
+        # Save the credentials for the next time
         with open('token.json', 'w') as token:
             token.write(creds.to_json())
     
     return creds
 
-# Get authenticated Google Sheets service
+# Function to get Google Sheets service after authentication
 def get_sheets_service():
     creds = get_credentials()
     service = build('sheets', 'v4', credentials=creds)
     return service
 
-# Example of updating a Google Sheets cell
+# Function to update a specific cell in Google Sheets
 def update_sheet_cell(sheet_id, sheet_name, cell, value):
     try:
         service = get_sheets_service()
@@ -60,13 +64,17 @@ def update_sheet_cell(sheet_id, sheet_name, cell, value):
         st.error(f"An error occurred: {error}")
         return False
 
-# Streamlit app interface
+# Main Streamlit interface
 def main():
-    sheet_id = "YOUR_SHEET_ID"
-    sheet_name = "YOUR_SHEET_NAME"
-    cell = "A2"
-    new_status = "Accepted"
-
+    st.title("Google Sheets Status Updater")
+    
+    # Input Google Sheets details
+    sheet_id = st.text_input("Enter Google Sheet ID", value="YOUR_SHEET_ID")
+    sheet_name = st.text_input("Enter Google Sheet Name", value="YOUR_SHEET_NAME")
+    cell = st.text_input("Enter Cell to Update", value="A2")
+    new_status = st.text_input("Enter New Status", value="Accepted")
+    
+    # Button to update the status in the Google Sheet
     if st.button("Update Status"):
         if update_sheet_cell(sheet_id, sheet_name, cell, new_status):
             st.success(f"Updated status for {cell} to {new_status}")

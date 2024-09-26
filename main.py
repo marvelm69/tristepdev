@@ -39,7 +39,7 @@ def get_sheet_data(service, spreadsheet_id, range_name):
 
 def update_sheet_cell(service, spreadsheet_id, sheet_name, row, value):
     # Column O corresponds to column 15 (O is the 15th letter of the alphabet)
-    range_name = f"'{sheet_name}'!O{row}"
+    range_name = f"'{sheet_name}'!O{row}"  # Column O is the Status column
     body = {
         'values': [[value]]
     }
@@ -59,7 +59,8 @@ def update_sheet_cell(service, spreadsheet_id, sheet_name, row, value):
 if 'status_updates' in st.session_state and st.session_state.status_updates and st.button("Save Status Changes", key="save_status"):
     for index, new_status in st.session_state.status_updates.items():
         try:
-            if update_sheet_cell(service, spreadsheet_id, sheet_name, index + 2, 'Status', new_status):
+            # Notice that we no longer pass 'Status' as an argument
+            if update_sheet_cell(service, spreadsheet_id, sheet_name, index + 2, new_status):
                 st.success(f"Updated status for row {index + 2} to {new_status}")
             else:
                 st.error(f"Failed to update status for row {index + 2}")

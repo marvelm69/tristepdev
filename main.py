@@ -37,8 +37,9 @@ def get_sheet_data(service, spreadsheet_id, range_name):
     return df
 
 
-def update_sheet_cell(service, spreadsheet_id, sheet_name, row, column, value):
-    range_name = f"'{sheet_name}'!{column}{row}"
+def update_sheet_cell(service, spreadsheet_id, sheet_name, row, value):
+    # Column O corresponds to column 15 (O is the 15th letter of the alphabet)
+    range_name = f"'{sheet_name}'!O{row}"
     body = {
         'values': [[value]]
     }
@@ -52,6 +53,7 @@ def update_sheet_cell(service, spreadsheet_id, sheet_name, row, column, value):
     except Exception as e:
         st.error(f"Error updating cell: {str(e)}")
         return False
+
 
 # Update the relevant part of show_main_page function
 if 'status_updates' in st.session_state and st.session_state.status_updates and st.button("Save Status Changes", key="save_status"):

@@ -82,6 +82,9 @@ def check_credentials(username, password):
     return username == st.secrets["app"]["username"] and password == st.secrets["app"]["password"]
 
 def show_main_page(service, spreadsheet_id, sheet_name):
+    if 'status_updates' not in st.session_state:
+        st.session_state.status_updates = {}
+
     col1, col2, col3 = st.columns([3,1,1])
     with col3:
         if st.button("Logout"):
@@ -151,7 +154,6 @@ def show_main_page(service, spreadsheet_id, sheet_name):
         
         # Separate section for status input
         st.header("Update Status")
-        status_updates = {}  # Initialize status_updates dictionary
         for index, row in filtered_df.iterrows():
             col1, col2 = st.columns([3, 1])
             with col1:
@@ -164,11 +166,11 @@ def show_main_page(service, spreadsheet_id, sheet_name):
                                           index=status_options.index(current_status) if current_status in status_options else 0,
                                           key=f"status_{index}")
                 if new_status != current_status:
-                    status_updates[index] = new_status
+                    st.session_state.status_updates[index] = new_status
         
         # Save button
-        if status_updates and st.button("Save Status Changes"):
-            for index, new_status in status_updates.items():
+        if st.session_state.status_updates and st.button("Save Status Changes"):
+            for index, new_status in st.session_state.status_updates.items():
                 try:
                     if update_sheet_cell(service, spreadsheet_id, sheet_name, index + 2, 'Status', new_status):
                         st.success(f"Updated status for row {index + 2} to {new_status}")
@@ -178,13 +180,12 @@ def show_main_page(service, spreadsheet_id, sheet_name):
                     st.error(f"Error updating row {index + 2}: {str(e)}")
             
             # Clear status updates after saving
-            status_updates.clear()
+            st.session_state.status_updates.clear()
             st.rerun()  # Refresh the page to show updated data
         
     except Exception as e:
         st.error(f"An error occurred: {str(e)}")
         st.info("Please check your Sheet ID and Sheet Name in the secrets configuration.")
-
 def main():
     if 'logged_in' not in st.session_state:
         st.session_state['logged_in'] = False

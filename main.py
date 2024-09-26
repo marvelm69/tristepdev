@@ -22,8 +22,17 @@ def get_sheet_data(service, spreadsheet_id, range_name):
     
     headers = values[0]
     rows = values[1:]
+    
+    # Find the maximum number of columns
+    max_cols = max(len(headers), max(len(row) for row in rows))
+    
+    # Pad headers and rows to match the maximum number of columns
+    headers = headers + [''] * (max_cols - len(headers))
+    rows = [row + [''] * (max_cols - len(row)) for row in rows]
+    
     df = pd.DataFrame(rows, columns=headers)
     return df
+
 
 def update_sheet_cell(service, spreadsheet_id, range_name, value):
     body = {
@@ -62,13 +71,33 @@ def show_main_page(service, spreadsheet_id, sheet_name):
     try:
         df = get_sheet_data(service, spreadsheet_id, sheet_name)
         
+        # Check if 'Timestamp' column exists
+        if 'Timestamp' not in df.columns:
+            st.error("The 'Timestamp' column is missing from the sheet data.")
+            return
+        
         # Convert 'Timestamp' column to datetime
-        df['Timestamp'] = pd.to_datetime(df['Timestamp'])
+        df['Timestamp'] = pd.to_datetime(df['Timestamp'], errors='coerce')
+        
+        # Handle cases where Timestamp conversion fails
+        if df['Timestamp'].isnull().all():
+            st.error("Unable to parse any dates from the 'Timestamp' column. Please check the data format.")
+            return
+        
+        # Remove rows with NaT (Not a Time) values in Timestamp
+        df = df.dropna(subset=['Timestamp'])
+        
+        if df.empty:
+            st.warning("No valid data remaining after filtering out rows with invalid timestamps.")
+            return
         
         # Create filters
         col1, col2 = st.columns(2)
         with col1:
             years = sorted(df['Timestamp'].dt.year.unique(), reverse=True)
+            if not years:
+                st.error("No valid years found in the data.")
+                return
             selected_year = st.selectbox("Select Year", years)
         
         with col2:
@@ -83,6 +112,10 @@ def show_main_page(service, spreadsheet_id, sheet_name):
             (df['Timestamp'].dt.year == selected_year) & 
             (df['Timestamp'].dt.month == months.index(selected_month) + 1)
         ]
+        
+        if filtered_df.empty:
+            st.warning(f"No data available for {selected_month} {selected_year}")
+            return
         
         # Display filtered data
         st.dataframe(filtered_df)
@@ -113,19 +146,23 @@ def show_main_page(service, spreadsheet_id, sheet_name):
                     status_updates[index] = new_status
         
         # Save button
-        if st.button("Save Status Changes"):
+        if status_updates and st.button("Save Status Changes"):
             for index, new_status in status_updates.items():
                 range_name = f"{sheet_name}!Status{index + 2}"
-                if update_sheet_cell(service, spreadsheet_id, range_name, new_status):
-                    st.success(f"Updated status for row {index + 2} to {new_status}")
-                else:
-                    st.error(f"Failed to update status for row {index + 2}")
+                try:
+                    if update_sheet_cell(service, spreadsheet_id, range_name, new_status):
+                        st.success(f"Updated status for row {index + 2} to {new_status}")
+                    else:
+                        st.error(f"Failed to update status for row {index + 2}")
+                except Exception as e:
+                    st.error(f"Error updating row {index + 2}: {str(e)}")
             
             # Clear status updates after saving
             status_updates.clear()
+            st.rerun()  # Refresh the page to show updated data
         
     except Exception as e:
-        st.error(f"An error occurred: {e}")
+        st.error(f"An error occurred: {str(e)}")
         st.info("Please check your Sheet ID and Sheet Name in the secrets configuration.")
 
 def main():

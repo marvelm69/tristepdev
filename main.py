@@ -2,6 +2,8 @@ import requests
 import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
+from datetime import datetime
+
 
 def get_sheet_data_with_api_key(sheet_id, api_key, sheet_name):
     url = f"https://sheets.googleapis.com/v4/spreadsheets/{sheet_id}/values/{sheet_name}?key={api_key}"
@@ -23,6 +25,14 @@ def get_sheet_data_with_api_key(sheet_id, api_key, sheet_name):
             raise Exception("No data found in the sheet or sheet is empty")
     else:
         raise Exception(f"Error fetching data: {response.status_code} - {response.text}")
+def update_sheet_cell(sheet_id, api_key, sheet_name, cell, value):
+    url = f"https://sheets.googleapis.com/v4/spreadsheets/{sheet_id}/values/{sheet_name}!{cell}?valueInputOption=RAW&key={api_key}"
+    headers = {'Content-Type': 'application/json'}
+    data = {
+        "values": [[value]]
+    }
+    response = requests.put(url, headers=headers, json=data)
+    return response.status_code == 200
 
 def show_login_page():
     st.markdown("<h1 style='text-align: center;'>Login</h1>", unsafe_allow_html=True)
@@ -76,8 +86,24 @@ def show_main_page(sheet_id, api_key, sheet_name):
             (df['Timestamp'].dt.month == months.index(selected_month) + 1)
         ]
         
-        # Display filtered data
-        st.dataframe(filtered_df)
+        # Display filtered data with status dropdown
+        for index, row in filtered_df.iterrows():
+            col1, col2 = st.columns([3, 1])
+            with col1:
+                st.write(f"Row {index + 2}: {row['Timestamp']}")  # +2 because of 0-indexing and header row
+            with col2:
+                status_options = ['', 'Accept', 'Reject']
+                current_status = row.get('Status', '')
+                new_status = st.selectbox(f"Status for row {index + 2}", 
+                                          options=status_options, 
+                                          index=status_options.index(current_status) if current_status in status_options else 0,
+                                          key=f"status_{index}")
+                if new_status != current_status:
+                    cell = f"Status{index + 2}"  # Assuming 'Status' is the column name
+                    if update_sheet_cell(sheet_id, api_key, sheet_name, cell, new_status):
+                        st.success(f"Updated status for row {index + 2} to {new_status}")
+                    else:
+                        st.error(f"Failed to update status for row {index + 2}")
         
         # Display information about empty columns
         empty_cols = filtered_df.columns[filtered_df.isna().all()].tolist()

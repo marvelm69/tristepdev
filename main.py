@@ -1,8 +1,25 @@
 import streamlit as st
+import subprocess
+import sys
 import pandas as pd
+from datetime import datetime
+
+def install(package):
+    subprocess.check_call([sys.executable, "-m", "pip", "install", package])
+
+# Install required packages
+try:
+    import google.oauth2.service_account
+    import googleapiclient.discovery
+except ImportError:
+    install('google-auth')
+    install('google-auth-oauthlib')
+    install('google-auth-httplib2')
+    install('google-api-python-client')
+
+# Now import the required modules
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
-from datetime import datetime
 
 # Create a connection object.
 credentials = service_account.Credentials.from_service_account_file(

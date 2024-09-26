@@ -3,7 +3,9 @@ import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
 from datetime import datetime
+import logging
 
+logging.basicConfig(level=logging.DEBUG)
 
 def get_sheet_data_with_api_key(sheet_id, api_key, sheet_name):
     url = f"https://sheets.googleapis.com/v4/spreadsheets/{sheet_id}/values/{sheet_name}?key={api_key}"
@@ -25,15 +27,21 @@ def get_sheet_data_with_api_key(sheet_id, api_key, sheet_name):
             raise Exception("No data found in the sheet or sheet is empty")
     else:
         raise Exception(f"Error fetching data: {response.status_code} - {response.text}")
-        
+
 def update_sheet_cell(sheet_id, api_key, sheet_name, cell, value):
-    url = f"https://sheets.googleapis.com/v4/spreadsheets/{sheet_id}/values/{sheet_name}!{cell}?valueInputOption=RAW&key={api_key}"
+    url = f"https://sheets.googleapis.com/v4/spreadsheets/{sheet_id}/values/{cell}?valueInputOption=RAW&key={api_key}"
     headers = {'Content-Type': 'application/json'}
     data = {
         "values": [[value]]
     }
+    logging.debug(f"Updating cell {cell} with value {value}")
+    logging.debug(f"Request URL: {url}")
     response = requests.put(url, headers=headers, json=data)
-    return response.status_code == 200
+    logging.debug(f"Response status code: {response.status_code}")
+    logging.debug(f"Response content: {response.text}")
+    if response.status_code != 200:
+        raise Exception(f"API Error: {response.status_code} - {response.text}")
+    return True
 
 def show_login_page():
     st.markdown("<h1 style='text-align: center;'>Login</h1>", unsafe_allow_html=True)
@@ -117,15 +125,23 @@ def show_main_page(sheet_id, api_key, sheet_name):
         
         # Save button
         if st.button("Save Status Changes"):
-            for index, new_status in status_updates.items():
-                cell = f"Status{index + 2}"  # Assuming 'Status' is the column name
-                if update_sheet_cell(sheet_id, api_key, sheet_name, cell, new_status):
-                    st.success(f"Updated status for row {index + 2} to {new_status}")
-                else:
-                    st.error(f"Failed to update status for row {index + 2}")
-            
-            # Clear status updates after saving
-            status_updates.clear()
+            if status_updates:
+                with st.spinner("Updating statuses..."):
+                    for index, new_status in status_updates.items():
+                        cell = f"Status!{chr(65 + filtered_df.columns.get_loc('Status'))}{index + 2}"  # Get correct column letter
+                        try:
+                            if update_sheet_cell(sheet_id, api_key, sheet_name, cell, new_status):
+                                st.success(f"Updated status for row {index + 2} to {new_status}")
+                            else:
+                                st.error(f"Failed to update status for row {index + 2}. Please check your permissions and try again.")
+                        except Exception as e:
+                            st.error(f"Error updating row {index + 2}: {str(e)}")
+                
+                # Clear status updates after saving
+                status_updates.clear()
+                st.rerun()  # Refresh the page to show updated data
+            else:
+                st.info("No status changes to save.")
         
     except Exception as e:
         st.error(f"An error occurred: {e}")
@@ -144,7 +160,6 @@ def main():
         api_key = "AIzaSyAz63oyhk1_rNgXiROi2ghHX4tBoPvkDOQ"
         sheet_name = "Form Responses 1"
         show_main_page(sheet_id, api_key, sheet_name)
-
 
 if __name__ == "__main__":
     main()

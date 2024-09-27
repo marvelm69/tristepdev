@@ -89,32 +89,16 @@ if 'status_updates' in st.session_state and st.session_state.status_updates and 
 def show_login_page():
     st.markdown("<h1 style='text-align: center;'>Login</h1>", unsafe_allow_html=True)
     
-    # Add custom CSS to style the input fields
-    st.markdown(
-        """
-        <style>
-        input[type="text"], input[type="password"] {
-            width: 200px !important;
-        }
-        </style>
-        """, 
-        unsafe_allow_html=True
-    )
-    
-    col1, col2, col3 = st.columns([2, 1, 2])  # Adjust column widths
+    col1, col2, col3 = st.columns([1,1,1])
     with col2:
-        # Inputs will follow the custom width defined by the CSS
         username = st.text_input("Username", key="username")
         password = st.text_input("Password", type="password", key="password")
-        
-        # Adjust the width of the login button as well
-        if st.button("Login", use_container_width=False):  # Use container width as False to make it smaller
+        if st.button("Login", use_container_width=True, key="login_button"):
             if check_credentials(username, password):
                 st.session_state['logged_in'] = True
                 st.rerun()
             else:
                 st.error("Invalid username or password")
-
 
 def check_credentials(username, password):
     return username == st.secrets["app"]["username"] and password == st.secrets["app"]["password"]

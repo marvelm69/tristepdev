@@ -174,21 +174,34 @@ def show_main_page(service, spreadsheet_id, sheet_name):
         # Display row count
         st.info(f"Showing {len(filtered_df)} rows for {selected_month} {selected_year}")
         
-        # Separate section for status input
+        # Separate section for status update table
         st.header("Update Status")
-        for index, row in filtered_df.iterrows():
-            col1, col2 = st.columns([3, 1])
-            with col1:
-                st.write(f"Row {index + 2}: {row['Timestamp']}")  # +2 because of 0-indexing and header row
-            with col2:
-                status_options = ['', 'Accept', 'Reject']
-                current_status = row.get('Status', '')
-                new_status = st.selectbox(f"Status for row {index + 2}", 
-                                          options=status_options, 
-                                          index=status_options.index(current_status) if current_status in status_options else 0,
-                                          key=f"status_{index}")
-                if new_status != current_status:
-                    st.session_state.status_updates[index] = new_status
+        
+        # Create a DataFrame for status updates
+        status_df = filtered_df[['Timestamp', 'Status']].copy()
+        status_df['Row'] = status_df.index + 2  # +2 because of 0-indexing and header row
+        status_df = status_df[['Row', 'Timestamp', 'Status']]
+        
+        # Use st.data_editor for an editable table
+        edited_df = st.data_editor(
+            status_df,
+            column_config={
+                "Row": st.column_config.NumberColumn("Row", disabled=True),
+                "Timestamp": st.column_config.DatetimeColumn("Timestamp", disabled=True),
+                "Status": st.column_config.SelectboxColumn(
+                    "Status",
+                    options=['', 'Accept', 'Reject'],
+                    required=True
+                )
+            },
+            hide_index=True,
+            key="status_editor"
+        )
+        
+        # Check for changes and update session state
+        for index, row in edited_df.iterrows():
+            if row['Status'] != status_df.loc[index, 'Status']:
+                st.session_state.status_updates[index] = row['Status']
         
         # Save button
         if st.session_state.status_updates and st.button("Save Status Changes", key="save_status_changes"):
@@ -208,7 +221,6 @@ def show_main_page(service, spreadsheet_id, sheet_name):
     except Exception as e:
         st.error(f"An error occurred: {str(e)}")
         st.info("Please check your Sheet ID and Sheet Name in the secrets configuration.")
-        
 def main():
     if 'logged_in' not in st.session_state:
         st.session_state['logged_in'] = False

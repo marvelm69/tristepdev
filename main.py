@@ -197,14 +197,22 @@ def show_main_page(service, spreadsheet_id, sheet_name):
         # Save button
         if st.button("Save Status Changes", key="save_status_changes", disabled=not status_changed):
             if st.session_state.status_updates:
+                rows_to_delete = []
                 for row, new_status in st.session_state.status_updates.items():
                     try:
-                        if update_sheet_cell(service, spreadsheet_id, sheet_name, row, 'Status', new_status):
+                        if new_status == 'Reject':
+                            rows_to_delete.append(row)
+                        elif update_sheet_cell(service, spreadsheet_id, sheet_name, row, 'Status', new_status):
                             st.success(f"Updated status for row {row} to {new_status}")
                         else:
                             st.error(f"Failed to update status for row {row}")
                     except Exception as e:
                         st.error(f"Error updating row {row}: {str(e)}")
+                
+                # Delete rejected rows
+                if rows_to_delete:
+                    delete_rows(service, spreadsheet_id, sheet_name, rows_to_delete)
+                    st.success(f"Deleted {len(rows_to_delete)} rejected row(s)")
                 
                 # Clear status updates after saving
                 st.session_state.status_updates.clear()
@@ -212,9 +220,42 @@ def show_main_page(service, spreadsheet_id, sheet_name):
             else:
                 st.info("No changes to save.")
         
+        # Display table of accepted entries
+        st.header("Accepted Entries")
+        accepted_df = edited_df[edited_df['Status'] == 'Accept']
+        if not accepted_df.empty:
+            st.dataframe(accepted_df)
+        else:
+            st.info("No accepted entries for the selected period.")
+        
     except Exception as e:
         st.error(f"An error occurred: {str(e)}")
         st.info("Please check your Sheet ID and Sheet Name in the secrets configuration.")
+
+def delete_rows(service, spreadsheet_id, sheet_name, rows):
+    # Sort rows in descending order to avoid shifting issues
+    rows.sort(reverse=True)
+    
+    for row in rows:
+        try:
+            # Delete the row
+            request = service.spreadsheets().batchUpdate(spreadsheetId=spreadsheet_id, body={
+                "requests": [
+                    {
+                        "deleteDimension": {
+                            "range": {
+                                "sheetId": 0,  # Assuming it's the first sheet
+                                "dimension": "ROWS",
+                                "startIndex": row - 1,  # -1 because Google Sheets is 0-indexed
+                                "endIndex": row
+                            }
+                        }
+                    }
+                ]
+            })
+            request.execute()
+        except Exception as e:
+            st.error(f"Error deleting row {row}: {str(e)}")
         
 def main():
     if 'logged_in' not in st.session_state:

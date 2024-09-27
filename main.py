@@ -14,7 +14,34 @@ def get_google_sheets_service():
     )
     service = build('sheets', 'v4', credentials=creds)
     return service
-
+    
+def append_to_online_courses(service, source_spreadsheet_id, destination_spreadsheet_id, source_sheet_name, destination_sheet_name, row_data):
+    # Get data from source sheet
+    source_range = f"'{source_sheet_name}'!D:Q"
+    result = service.spreadsheets().values().get(spreadsheetId=source_spreadsheet_id, range=source_range).execute()
+    values = result.get('values', [])
+    
+    if not values:
+        raise Exception('No data found in source sheet.')
+    
+    # Prepare data for destination sheet
+    destination_data = [values[row_data - 1]]  # -1 because sheet rows are 1-indexed
+    
+    # Append to destination sheet
+    destination_range = f"'{destination_sheet_name}'!B:O"
+    body = {
+        'values': destination_data
+    }
+    result = service.spreadsheets().values().append(
+        spreadsheetId=destination_spreadsheet_id,
+        range=destination_range,
+        valueInputOption='RAW',
+        insertDataOption='INSERT_ROWS',
+        body=body
+    ).execute()
+    
+    return result
+    
 def get_sheet_data(service, spreadsheet_id, range_name):
     sheet = service.spreadsheets()
     result = sheet.values().get(spreadsheetId=spreadsheet_id, range=range_name).execute()
@@ -62,9 +89,19 @@ def update_sheet_cell(service, spreadsheet_id, sheet_name, row, column_name, val
         result = service.spreadsheets().values().update(
             spreadsheetId=spreadsheet_id, 
             range=range_name,
-            valueInputOption='RAW',  # RAW means the value will be input directly as-is
+            valueInputOption='RAW',
             body=body
         ).execute()
+
+        # If status is changed to 'Accept', append data to Online_Courses
+        if column_name == 'Status' and value == 'Accept':
+            destination_spreadsheet_id = "1PM_ifqhHQbvVau26xH2rU7xEw8ib1t2D6s_eDRPzJVI"  # ID for Online_Courses sheet
+            append_result = append_to_online_courses(service, spreadsheet_id, destination_spreadsheet_id, sheet_name, "Online_Courses", row)
+            if append_result:
+                st.success(f"Data from row {row} has been added to Online_Courses sheet.")
+            else:
+                st.error(f"Failed to add data from row {row} to Online_Courses sheet.")
+
         return True
     except Exception as e:
         st.error(f"Error updating cell: {str(e)}")
@@ -103,7 +140,7 @@ def show_login_page():
 def check_credentials(username, password):
     return username == st.secrets["app"]["username"] and password == st.secrets["app"]["password"]
 
-def show_main_page(service, spreadsheet_id, sheet_name):
+def show_main_page(service, spreadsheet_id, sheet_name, online_courses_spreadsheet_id):
     if 'status_updates' not in st.session_state:
         st.session_state.status_updates = {}
 
@@ -236,7 +273,7 @@ def main():
         service = get_google_sheets_service()
         spreadsheet_id = st.secrets["google_sheets"]["spreadsheet_id"]
         sheet_name = st.secrets["google_sheets"]["worksheet_name"]
-        show_main_page(service, spreadsheet_id, sheet_name)
-
+        online_courses_spreadsheet_id = st.secrets["google_sheets"]["online_courses_spreadsheet_id"]
+        show_main_page(service, spreadsheet_id, sheet_name, online_courses_spreadsheet_id)
 if __name__ == "__main__":
     main()

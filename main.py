@@ -29,27 +29,27 @@ def send_email(recipient_email, full_name, title, status):
 
     if status == 'Accept':
         body = f'''
-        Dear {full_name},
+Dear {full_name},
 
-        Congratulations! We are pleased to inform you that your online course, "{title}", has been approved for the TRISTEP platform. Your course aligns well with our content standards, and we believe it will be a valuable addition to our offerings.
+Congratulations! We are pleased to inform you that your online course, "{title}", has been approved for the TRISTEP platform. Your course aligns well with our content standards, and we believe it will be a valuable addition to our offerings.
 
-        Thank you for your contribution to our learning community. We look forward to seeing your course engage and educate our users.
+Thank you for your contribution to our learning community. We look forward to seeing your course engage and educate our users.
 
-        Best regards,
-        The TRISTEP Team
+Best regards,
+TRISTEP Admin
         '''
     else:  # Reject
         body = f'''
-        Dear {full_name},
+Dear {full_name},
 
-        Thank you for submitting your online course, "{title}", for consideration on the TRISTEP platform. After a thorough review by our team, we regret to inform you that your course does not fully align with our current content standards, and therefore we cannot proceed with its approval at this time.
+Thank you for submitting your online course, "{title}", for consideration on the TRISTEP platform. After a thorough review by our team, we regret to inform you that your course does not fully align with our current content standards, and therefore we cannot proceed with its approval at this time.
 
-        We highly value the effort you've put into creating this course and encourage you to make the necessary adjustments. Should you choose to revise and resubmit, please ensure your content aligns with our platform's standards.
+We highly value the effort you've put into creating this course and encourage you to make the necessary adjustments. Should you choose to revise and resubmit, please ensure your content aligns with our platform's standards.
 
-        Thank you for your understanding and continued interest in contributing to TRISTEP.
+Thank you for your understanding and continued interest in contributing to TRISTEP.
 
-        Best regards,
-        The TRISTEP Team
+Best regards,
+TRISTEP Admin
         '''
 
     message.attach(MIMEText(body, 'plain'))

@@ -25,10 +25,13 @@ def append_to_online_courses(service, source_spreadsheet_id, destination_spreads
         raise Exception('No data found in source sheet.')
     
     # Prepare data for destination sheet
-    destination_data = [values[row_data - 1]]  # -1 because sheet rows are 1-indexed
+    source_data = values[row_data - 1]  # -1 because sheet rows are 1-indexed
     
-    # Append to destination sheet
-    destination_range = f"'{destination_sheet_name}'!B:O"
+    # Add an empty string at the beginning to shift data one column to the right
+    destination_data = [[''] + source_data]
+    
+    # Append to destination sheet, starting from column B
+    destination_range = f"'{destination_sheet_name}'!A:O"  # We still specify A:O, but we'll insert an empty column
     body = {
         'values': destination_data
     }

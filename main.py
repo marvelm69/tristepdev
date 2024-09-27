@@ -163,14 +163,10 @@ def show_main_page(service, spreadsheet_id, sheet_name):
             st.warning(f"No data available for {selected_month} {selected_year}")
             return
         
-        # Add a 'Row' column to keep track of the original row numbers
-        filtered_df['Row'] = filtered_df.index + 2  # +2 because of 0-indexing and header row
-        
         # Use st.data_editor for an editable table
         edited_df = st.data_editor(
             filtered_df,
             column_config={
-                "Row": st.column_config.NumberColumn("Row", disabled=True),
                 "Timestamp": st.column_config.DatetimeColumn("Timestamp", disabled=True),
                 "Status": st.column_config.SelectboxColumn(
                     "Status",
@@ -182,10 +178,13 @@ def show_main_page(service, spreadsheet_id, sheet_name):
             key="data_editor"
         )
         
-        # Check for changes in the Status column and update session state
+        # Check for changes in the Status column
+        status_changed = False
         for index, row in edited_df.iterrows():
             if row['Status'] != filtered_df.loc[index, 'Status']:
-                st.session_state.status_updates[row['Row']] = row['Status']
+                status_changed = True
+                # Use index + 2 to account for 0-indexing and header row in Google Sheets
+                st.session_state.status_updates[index + 2] = row['Status']
         
         # Display information about empty columns
         empty_cols = filtered_df.columns[filtered_df.isna().all()].tolist()
@@ -196,23 +195,27 @@ def show_main_page(service, spreadsheet_id, sheet_name):
         st.info(f"Showing {len(filtered_df)} rows for {selected_month} {selected_year}")
         
         # Save button
-        if st.session_state.status_updates and st.button("Save Status Changes", key="save_status_changes"):
-            for row, new_status in st.session_state.status_updates.items():
-                try:
-                    if update_sheet_cell(service, spreadsheet_id, sheet_name, row, 'Status', new_status):
-                        st.success(f"Updated status for row {row} to {new_status}")
-                    else:
-                        st.error(f"Failed to update status for row {row}")
-                except Exception as e:
-                    st.error(f"Error updating row {row}: {str(e)}")
-            
-            # Clear status updates after saving
-            st.session_state.status_updates.clear()
-            st.rerun()  # Refresh the page to show updated data
+        if st.button("Save Status Changes", key="save_status_changes", disabled=not status_changed):
+            if st.session_state.status_updates:
+                for row, new_status in st.session_state.status_updates.items():
+                    try:
+                        if update_sheet_cell(service, spreadsheet_id, sheet_name, row, 'Status', new_status):
+                            st.success(f"Updated status for row {row} to {new_status}")
+                        else:
+                            st.error(f"Failed to update status for row {row}")
+                    except Exception as e:
+                        st.error(f"Error updating row {row}: {str(e)}")
+                
+                # Clear status updates after saving
+                st.session_state.status_updates.clear()
+                st.rerun()  # Refresh the page to show updated data
+            else:
+                st.info("No changes to save.")
         
     except Exception as e:
         st.error(f"An error occurred: {str(e)}")
         st.info("Please check your Sheet ID and Sheet Name in the secrets configuration.")
+        
 def main():
     if 'logged_in' not in st.session_state:
         st.session_state['logged_in'] = False

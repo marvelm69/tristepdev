@@ -163,6 +163,7 @@ def show_main_page(service, spreadsheet_id, sheet_name):
             st.warning(f"No data available for {selected_month} {selected_year}")
             return
         
+        st.subheader("All Entries")
         # Use st.data_editor for an editable table
         edited_df = st.data_editor(
             filtered_df,
@@ -211,6 +212,15 @@ def show_main_page(service, spreadsheet_id, sheet_name):
                 st.rerun()  # Refresh the page to show updated data
             else:
                 st.info("No changes to save.")
+        
+        # New table for Accepted entries
+        st.subheader("Accepted Entries")
+        accepted_df = filtered_df[filtered_df['Status'] == 'Accept']
+        if accepted_df.empty:
+            st.info("No accepted entries for the selected period.")
+        else:
+            st.dataframe(accepted_df, hide_index=True)
+            st.info(f"Showing {len(accepted_df)} accepted entries for {selected_month} {selected_year}")
         
     except Exception as e:
         st.error(f"An error occurred: {str(e)}")

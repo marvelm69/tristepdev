@@ -3,6 +3,9 @@ import streamlit as st
 from datetime import datetime
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 # Set page configuration at the very beginning
 st.set_page_config(layout="wide")
@@ -14,7 +17,54 @@ def get_google_sheets_service():
     )
     service = build('sheets', 'v4', credentials=creds)
     return service
-    
+
+def send_email(recipient_email, full_name, title, status):
+    sender_email = "tristepcompany@gmail.com"
+    sender_password = "yuvc rpls jtwy btle"  # Use Gmail App Password
+
+    message = MIMEMultipart()
+    message['From'] = sender_email
+    message['To'] = recipient_email
+    message['Subject'] = f'Verification Result of Online Course "{title}" for TriStep Platform'
+
+    if status == 'Accept':
+        body = f'''
+        Dear {full_name},
+
+        Congratulations! We are pleased to inform you that your online course, "{title}", has been approved for the TRISTEP platform. Your course aligns well with our content standards, and we believe it will be a valuable addition to our offerings.
+
+        Thank you for your contribution to our learning community. We look forward to seeing your course engage and educate our users.
+
+        Best regards,
+        The TRISTEP Team
+        '''
+    else:  # Reject
+        body = f'''
+        Dear {full_name},
+
+        Thank you for submitting your online course, "{title}", for consideration on the TRISTEP platform. After a thorough review by our team, we regret to inform you that your course does not fully align with our current content standards, and therefore we cannot proceed with its approval at this time.
+
+        We highly value the effort you've put into creating this course and encourage you to make the necessary adjustments. Should you choose to revise and resubmit, please ensure your content aligns with our platform's standards.
+
+        Thank you for your understanding and continued interest in contributing to TRISTEP.
+
+        Best regards,
+        The TRISTEP Team
+        '''
+
+    message.attach(MIMEText(body, 'plain'))
+
+    try:
+        server = smtplib.SMTP('smtp.gmail.com', 587)
+        server.starttls()
+        server.login(sender_email, sender_password)
+        server.send_message(message)
+        server.quit()
+        return True
+    except Exception as e:
+        st.error(f"Failed to send email: {str(e)}")
+        return False
+
 def append_to_online_courses(service, source_spreadsheet_id, destination_spreadsheet_id, source_sheet_name, destination_sheet_name, row_data):
     # Get data from source sheet
     source_range = f"'{source_sheet_name}'!D:Q"
@@ -44,7 +94,7 @@ def append_to_online_courses(service, source_spreadsheet_id, destination_spreads
     ).execute()
     
     return result
-    
+
 def get_sheet_data(service, spreadsheet_id, range_name):
     sheet = service.spreadsheets()
     result = sheet.values().get(spreadsheetId=spreadsheet_id, range=range_name).execute()
@@ -65,7 +115,6 @@ def get_sheet_data(service, spreadsheet_id, range_name):
     
     df = pd.DataFrame(rows, columns=headers)
     return df
-
 
 def update_sheet_cell(service, spreadsheet_id, sheet_name, row, column_name, value):
     # Get the header row from the sheet
@@ -96,8 +145,37 @@ def update_sheet_cell(service, spreadsheet_id, sheet_name, row, column_name, val
             body=body
         ).execute()
 
+        # If status is changed to 'Accept' or 'Reject', send an email
+        if column_name == 'Status' and (value == 'Accept' or value == 'Reject'):
+            # Fetch the entire row data
+            row_data = service.spreadsheets().values().get(
+                spreadsheetId=spreadsheet_id,
+                range=f"'{sheet_name}'!{row}:{row}"
+            ).execute().get('values', [[]])[0]
+
+            # Get the indices of required columns
+            headers = service.spreadsheets().values().get(
+                spreadsheetId=spreadsheet_id,
+                range=f"'{sheet_name}'!1:1"
+            ).execute().get('values', [[]])[0]
+
+            gmail_index = headers.index('Gmail')
+            full_name_index = headers.index('Full Name')
+            title_index = headers.index('Title')
+
+            # Extract required data
+            recipient_email = row_data[gmail_index]
+            full_name = row_data[full_name_index]
+            title = row_data[title_index]
+
+            # Send email
+            if send_email(recipient_email, full_name, title, value):
+                st.success(f"Email sent to {recipient_email}")
+            else:
+                st.error(f"Failed to send email to {recipient_email}")
+
         # If status is changed to 'Accept', append data to Online_Courses
-        if column_name == 'Status' and value == 'Accept':
+        if value == 'Accept':
             destination_spreadsheet_id = "1PM_ifqhHQbvVau26xH2rU7xEw8ib1t2D6s_eDRPzJVI"  # ID for Online_Courses sheet
             append_result = append_to_online_courses(service, spreadsheet_id, destination_spreadsheet_id, sheet_name, "Online_Courses", row)
             if append_result:
@@ -109,22 +187,6 @@ def update_sheet_cell(service, spreadsheet_id, sheet_name, row, column_name, val
     except Exception as e:
         st.error(f"Error updating cell: {str(e)}")
         return False
-
-# In your loop for saving status changes
-if 'status_updates' in st.session_state and st.session_state.status_updates and st.button("Save Status Changes", key="save_status"):
-    for index, new_status in st.session_state.status_updates.items():
-        try:
-            # Update the 'Status' column dynamically by name
-            if update_sheet_cell(service, spreadsheet_id, sheet_name, index + 2, 'Status', new_status):
-                st.success(f"Updated status for row {index + 2} to {new_status}")
-            else:
-                st.error(f"Failed to update status for row {index + 2}")
-        except Exception as e:
-            st.error(f"Error updating row {index + 2}: {str(e)}")
-    
-    # Clear status updates after saving
-    st.session_state.status_updates.clear()
-    st.rerun()  # Refresh the page to show updated data
 
 def show_login_page():
     st.markdown("<h1 style='text-align: center;'>Login</h1>", unsafe_allow_html=True)
@@ -265,7 +327,7 @@ def show_main_page(service, spreadsheet_id, sheet_name, online_courses_spreadshe
     except Exception as e:
         st.error(f"An error occurred: {str(e)}")
         st.info("Please check your Sheet ID and Sheet Name in the secrets configuration.")
-        
+
 def main():
     if 'logged_in' not in st.session_state:
         st.session_state['logged_in'] = False
@@ -278,5 +340,6 @@ def main():
         sheet_name = st.secrets["google_sheets"]["worksheet_name"]
         online_courses_spreadsheet_id = st.secrets["google_sheets"]["online_courses_spreadsheet_id"]
         show_main_page(service, spreadsheet_id, sheet_name, online_courses_spreadsheet_id)
+
 if __name__ == "__main__":
     main()

@@ -163,8 +163,29 @@ def show_main_page(service, spreadsheet_id, sheet_name):
             st.warning(f"No data available for {selected_month} {selected_year}")
             return
         
-        # Display filtered data
-        st.dataframe(filtered_df)
+        # Add a 'Row' column to keep track of the original row numbers
+        filtered_df['Row'] = filtered_df.index + 2  # +2 because of 0-indexing and header row
+        
+        # Use st.data_editor for an editable table
+        edited_df = st.data_editor(
+            filtered_df,
+            column_config={
+                "Row": st.column_config.NumberColumn("Row", disabled=True),
+                "Timestamp": st.column_config.DatetimeColumn("Timestamp", disabled=True),
+                "Status": st.column_config.SelectboxColumn(
+                    "Status",
+                    options=['', 'Accept', 'Reject'],
+                    required=False
+                )
+            },
+            hide_index=True,
+            key="data_editor"
+        )
+        
+        # Check for changes in the Status column and update session state
+        for index, row in edited_df.iterrows():
+            if row['Status'] != filtered_df.loc[index, 'Status']:
+                st.session_state.status_updates[row['Row']] = row['Status']
         
         # Display information about empty columns
         empty_cols = filtered_df.columns[filtered_df.isna().all()].tolist()
@@ -174,45 +195,16 @@ def show_main_page(service, spreadsheet_id, sheet_name):
         # Display row count
         st.info(f"Showing {len(filtered_df)} rows for {selected_month} {selected_year}")
         
-        # Separate section for status update table
-        st.header("Update Status")
-        
-        # Create a DataFrame for status updates
-        status_df = filtered_df[['Timestamp', 'Status']].copy()
-        status_df['Row'] = status_df.index + 2  # +2 because of 0-indexing and header row
-        status_df = status_df[['Row', 'Timestamp', 'Status']]
-        
-        # Use st.data_editor for an editable table
-        edited_df = st.data_editor(
-            status_df,
-            column_config={
-                "Row": st.column_config.NumberColumn("Row", disabled=True),
-                "Timestamp": st.column_config.DatetimeColumn("Timestamp", disabled=True),
-                "Status": st.column_config.SelectboxColumn(
-                    "Status",
-                    options=['', 'Accept', 'Reject'],
-                    required=True
-                )
-            },
-            hide_index=True,
-            key="status_editor"
-        )
-        
-        # Check for changes and update session state
-        for index, row in edited_df.iterrows():
-            if row['Status'] != status_df.loc[index, 'Status']:
-                st.session_state.status_updates[index] = row['Status']
-        
         # Save button
         if st.session_state.status_updates and st.button("Save Status Changes", key="save_status_changes"):
-            for index, new_status in st.session_state.status_updates.items():
+            for row, new_status in st.session_state.status_updates.items():
                 try:
-                    if update_sheet_cell(service, spreadsheet_id, sheet_name, index + 2, 'Status', new_status):
-                        st.success(f"Updated status for row {index + 2} to {new_status}")
+                    if update_sheet_cell(service, spreadsheet_id, sheet_name, row, 'Status', new_status):
+                        st.success(f"Updated status for row {row} to {new_status}")
                     else:
-                        st.error(f"Failed to update status for row {index + 2}")
+                        st.error(f"Failed to update status for row {row}")
                 except Exception as e:
-                    st.error(f"Error updating row {index + 2}: {str(e)}")
+                    st.error(f"Error updating row {row}: {str(e)}")
             
             # Clear status updates after saving
             st.session_state.status_updates.clear()

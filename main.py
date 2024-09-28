@@ -26,10 +26,26 @@ def send_email(recipient_email, full_name, title, status, entity_type):
     message = MIMEMultipart()
     message['From'] = sender_email
     message['To'] = recipient_email
-    message['Subject'] = f'Verification Result of {entity_type} "{title}" for TriStep Platform'
+    
+    if entity_type == "job":
+        message['Subject'] = f'Verification Result of Job Posting "{title}" for TriStep Platform'
+    else:
+        message['Subject'] = f'Verification Result of {entity_type} "{title}" for TriStep Platform'
 
     if status == 'Accept':
-        body = f'''
+        if entity_type == "job":
+            body = f'''
+Dear {full_name},
+
+We are pleased to inform you that your job posting for the position of "{title}" has been approved for the TRISTEP platform. Your job listing aligns well with our platform's standards and will now be visible to potential candidates.
+
+Thank you for choosing TRISTEP as a platform to find talented individuals for your organization. We wish you success in your recruitment process.
+
+Best regards,
+TRISTEP Admin
+            '''
+        else:
+            body = f'''
 Dear {full_name},
 
 Congratulations! We are pleased to inform you that your {entity_type}, "{title}", has been approved for the TRISTEP platform. Your contribution aligns well with our content standards, and we believe it will be a valuable addition to our offerings.
@@ -38,9 +54,23 @@ Thank you for your contribution to our learning community. We look forward to se
 
 Best regards,
 TRISTEP Admin
-        '''
+            '''
     else:  # Reject
-        body = f'''
+        if entity_type == "job":
+            body = f'''
+Dear {full_name},
+
+Thank you for submitting your job posting for the position of "{title}" to the TRISTEP platform. After careful review, we regret to inform you that we cannot approve this job listing at this time as it does not fully align with our current platform standards.
+
+We appreciate your interest in using TRISTEP for your recruitment needs. If you would like to revise and resubmit your job posting, please ensure it aligns with our platform's guidelines.
+
+Thank you for your understanding.
+
+Best regards,
+TRISTEP Admin
+            '''
+        else:
+            body = f'''
 Dear {full_name},
 
 Thank you for submitting your {entity_type}, "{title}", for consideration on the TRISTEP platform. After a thorough review, we regret to inform you that it does not fully align with our current content standards, and we cannot proceed with its approval at this time.
@@ -51,7 +81,7 @@ Thank you for your understanding.
 
 Best regards,
 TRISTEP Admin
-        '''
+            '''
 
     message.attach(MIMEText(body, 'plain'))
 

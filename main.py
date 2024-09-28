@@ -92,19 +92,20 @@ def append_to_online_courses(service, source_spreadsheet_id, destination_spreads
     return result
 
 def append_to_online_jobs(service, source_spreadsheet_id, destination_spreadsheet_id, source_sheet_name, destination_sheet_name, row_data):
-    # Get data from source sheet (columns D to Y)
-    source_range = f"'{source_sheet_name}'!D:Y"
+    # Get data from source sheet (all columns)
+    source_range = f"'{source_sheet_name}'!A:Z"
     result = service.spreadsheets().values().get(spreadsheetId=source_spreadsheet_id, range=source_range).execute()
     values = result.get('values', [])
     
     if not values:
         raise Exception('No data found in source sheet.')
     
+    headers = values[0]
     # Prepare data for destination sheet
     source_data = values[row_data - 1]  # -1 because sheet rows are 1-indexed
     
     # Append to destination sheet, starting from column A
-    destination_data = [source_data]  # Data starts from column A directly
+    destination_data = [source_data]
     
     destination_range = f"'{destination_sheet_name}'!A:A"
     body = {
@@ -118,7 +119,7 @@ def append_to_online_jobs(service, source_spreadsheet_id, destination_spreadshee
         body=body
     ).execute()
     
-    return result
+    return result, headers
 
 def get_sheet_data(service, spreadsheet_id, range_name):
     sheet = service.spreadsheets()
@@ -170,37 +171,27 @@ def update_sheet_cell(service, spreadsheet_id, sheet_name, row, column_name, val
                 range=f"'{sheet_name}'!{row}:{row}"
             ).execute().get('values', [[]])[0]
 
-            headers = service.spreadsheets().values().get(
-                spreadsheetId=spreadsheet_id,
-                range=f"'{sheet_name}'!1:1"
-            ).execute().get('values', [[]])[0]
+            gmail_index = headers.index('Gmail') if 'Gmail' in headers else -1
+            full_name_index = headers.index('Full Name') if 'Full Name' in headers else -1
+            title_index = headers.index('Title') if 'Title' in headers else -1
 
-            gmail_index = headers.index('Gmail')
-            full_name_index = headers.index('Full Name')
-            title_index = headers.index('Title')
-
-            recipient_email = row_data[gmail_index]
-            full_name = row_data[full_name_index]
-            title = row_data[title_index]
+            recipient_email = row_data[gmail_index] if gmail_index != -1 else ''
+            full_name = row_data[full_name_index] if full_name_index != -1 else ''
+            title = row_data[title_index] if title_index != -1 else ''
 
             # Send email notification
-            if send_email(recipient_email, full_name, title, value, entity_type):
-                st.success(f"Email sent to {recipient_email}")
+            if recipient_email and full_name and title:
+                if send_email(recipient_email, full_name, title, value, entity_type):
+                    st.success(f"Email sent to {recipient_email}")
+                else:
+                    st.error(f"Failed to send email to {recipient_email}")
             else:
-                st.error(f"Failed to send email to {recipient_email}")
+                st.warning("Unable to send email due to missing information.")
 
         # Append to the destination sheet if the status is "Accept"
-        if value == 'Accept' and entity_type == "course":
-            destination_spreadsheet_id = "1PM_ifqhHQbvVau26xH2rU7xEw8ib1t2D6s_eDRPzJVI"
-            append_result = append_to_online_courses(service, spreadsheet_id, destination_spreadsheet_id, sheet_name, row)
-            if append_result:
-                st.success(f"Data from row {row} has been added to Online_Courses sheet.")
-            else:
-                st.error(f"Failed to add data from row {row} to Online_Courses sheet.")
-        
-        elif value == 'Accept' and entity_type == "job":
+        if value == 'Accept' and entity_type == "job":
             destination_spreadsheet_id = "1AlunlNxwIM664-1SC08Ankuka6zlNmQoQ3BoMoYQFBg"
-            append_result = append_to_online_jobs(service, spreadsheet_id, destination_spreadsheet_id, sheet_name, row)
+            append_result, source_headers = append_to_online_jobs(service, spreadsheet_id, destination_spreadsheet_id, sheet_name, "Sheet1", row)
             if append_result:
                 st.success(f"Data from row {row} has been added to the Online_Jobs sheet.")
             else:
@@ -218,7 +209,7 @@ def show_course_page(service, spreadsheet_id, sheet_name, online_courses_spreads
 
 def show_job_page(service, spreadsheet_id, sheet_name, online_jobs_spreadsheet_id):
     st.header("Manage Jobs")
-    show_management_page(service, spreadsheet_id, "Sheet1", "job", online_jobs_spreadsheet_id)
+    show_management_page(service, spreadsheet_id, sheet_name, "job", online_jobs_spreadsheet_id)
 
 def show_management_page(service, spreadsheet_id, sheet_name, entity_type, destination_spreadsheet_id):
     if 'status_updates' not in st.session_state:
@@ -338,8 +329,8 @@ def main():
     else:
         service = get_google_sheets_service()
         course_spreadsheet_id = st.secrets["google_sheets"]["spreadsheet_id"]
-        job_spreadsheet_id = "1ym1Y-CM3mDp9QVPqIAj-C1WKSJ9eSB22oQT5BMOZ_c4"
-        online_courses_spreadsheet_id = st.secrets["google_sheets"]["online_courses_spreadsheet_id"]
+        job_spreadsheet_id = st.secrets["google_sheets_job"]["spreadsheet_id"]
+        online_jobs_spreadsheet_id = st.secrets["google_sheets_job"]["online_jobs_spreadsheet_id"]
         online_jobs_spreadsheet_id = "1AlunlNxwIM664-1SC08Ankuka6zlNmQoQ3BoMoYQFBg"
         
         page = st.sidebar.selectbox("Select Page", ["Manage Courses", "Manage Jobs"])

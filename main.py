@@ -104,7 +104,7 @@ def append_to_online_jobs(service, source_spreadsheet_id, destination_spreadshee
     # Prepare data for destination sheet
     source_data = values[row_data - 1]  # -1 because sheet rows are 1-indexed
     
-    # Ensure we have exactly 22 columns (A to V)
+    # Ensure we have exactly 22 columns (D to Y)
     if len(source_data) < 22:
         source_data.extend([''] * (22 - len(source_data)))
     elif len(source_data) > 22:
@@ -114,7 +114,7 @@ def append_to_online_jobs(service, source_spreadsheet_id, destination_spreadshee
     try:
         result = service.spreadsheets().values().append(
             spreadsheetId=destination_spreadsheet_id,
-            range=f"{destination_sheet_name}!A:V",  # Specify the range A:V
+            range=f"{destination_sheet_name}!A:V",  # Specify the range A:V in the destination sheet
             valueInputOption='RAW',
             insertDataOption='INSERT_ROWS',
             body={'values': [source_data]}
@@ -196,7 +196,7 @@ def update_sheet_cell(service, spreadsheet_id, sheet_name, row, column_name, val
         # Append to the destination sheet if the status is "Accept"
         if value == 'Accept' and entity_type == "job":
             destination_spreadsheet_id = st.secrets["google_sheets_job"]["online_jobs_spreadsheet_id"]
-            append_result, source_headers = append_to_online_jobs(service, spreadsheet_id, destination_spreadsheet_id, sheet_name, "Sheet1", row)
+            append_result, source_headers = append_to_online_jobs(service, spreadsheet_id, destination_spreadsheet_id, "Sheet1", "preprocessed_linkedin", row)
             if append_result:
                 st.success(f"Data from row {row} has been added to the Online_Jobs sheet.")
             else:
@@ -206,7 +206,7 @@ def update_sheet_cell(service, spreadsheet_id, sheet_name, row, column_name, val
     except Exception as e:
         st.error(f"Error updating cell: {str(e)}")
         return False
-
+        
 def show_course_page(service, spreadsheet_id, sheet_name, online_courses_spreadsheet_id):
     st.header("Manage Courses")
     show_management_page(service, spreadsheet_id, "Form Responses 1", "course", online_courses_spreadsheet_id)

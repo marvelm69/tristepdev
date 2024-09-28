@@ -91,6 +91,35 @@ def append_to_online_courses(service, source_spreadsheet_id, destination_spreads
     
     return result
 
+def append_to_online_jobs(service, source_spreadsheet_id, destination_spreadsheet_id, source_sheet_name, destination_sheet_name, row_data):
+    # Get data from source sheet (columns D to Y)
+    source_range = f"'{source_sheet_name}'!D:Y"
+    result = service.spreadsheets().values().get(spreadsheetId=source_spreadsheet_id, range=source_range).execute()
+    values = result.get('values', [])
+    
+    if not values:
+        raise Exception('No data found in source sheet.')
+    
+    # Prepare data for destination sheet
+    source_data = values[row_data - 1]  # -1 because sheet rows are 1-indexed
+    
+    # Append to destination sheet, starting from column A
+    destination_data = [source_data]  # Data starts from column A directly
+    
+    destination_range = f"'{destination_sheet_name}'!A:A"
+    body = {
+        'values': destination_data
+    }
+    result = service.spreadsheets().values().append(
+        spreadsheetId=destination_spreadsheet_id,
+        range=destination_range,
+        valueInputOption='RAW',
+        insertDataOption='INSERT_ROWS',
+        body=body
+    ).execute()
+    
+    return result
+
 def get_sheet_data(service, spreadsheet_id, range_name):
     sheet = service.spreadsheets()
     result = sheet.values().get(spreadsheetId=spreadsheet_id, range=f"'{range_name}'!A:Z").execute()
@@ -154,23 +183,34 @@ def update_sheet_cell(service, spreadsheet_id, sheet_name, row, column_name, val
             full_name = row_data[full_name_index]
             title = row_data[title_index]
 
+            # Send email notification
             if send_email(recipient_email, full_name, title, value, entity_type):
                 st.success(f"Email sent to {recipient_email}")
             else:
                 st.error(f"Failed to send email to {recipient_email}")
 
+        # Append to the destination sheet if the status is "Accept"
         if value == 'Accept' and entity_type == "course":
             destination_spreadsheet_id = "1PM_ifqhHQbvVau26xH2rU7xEw8ib1t2D6s_eDRPzJVI"
-            append_result = append_to_online_courses(service, spreadsheet_id, destination_spreadsheet_id, sheet_name, "Online_Courses", row)
+            append_result = append_to_online_courses(service, spreadsheet_id, destination_spreadsheet_id, sheet_name, row)
             if append_result:
                 st.success(f"Data from row {row} has been added to Online_Courses sheet.")
             else:
                 st.error(f"Failed to add data from row {row} to Online_Courses sheet.")
+        
+        elif value == 'Accept' and entity_type == "job":
+            destination_spreadsheet_id = "1AlunlNxwIM664-1SC08Ankuka6zlNmQoQ3BoMoYQFBg"
+            append_result = append_to_online_jobs(service, spreadsheet_id, destination_spreadsheet_id, sheet_name, row)
+            if append_result:
+                st.success(f"Data from row {row} has been added to the Online_Jobs sheet.")
+            else:
+                st.error(f"Failed to add data from row {row} to the Online_Jobs sheet.")
 
         return True
     except Exception as e:
         st.error(f"Error updating cell: {str(e)}")
         return False
+
 
 def show_course_page(service, spreadsheet_id, sheet_name, online_courses_spreadsheet_id):
     st.header("Manage Courses")
@@ -178,7 +218,7 @@ def show_course_page(service, spreadsheet_id, sheet_name, online_courses_spreads
 
 def show_job_page(service, spreadsheet_id, sheet_name, online_jobs_spreadsheet_id):
     st.header("Manage Jobs")
-    show_management_page(service, spreadsheet_id, sheet_name, "job", online_jobs_spreadsheet_id)
+    show_management_page(service, spreadsheet_id, "Sheet1", "job", online_jobs_spreadsheet_id)
 
 def show_management_page(service, spreadsheet_id, sheet_name, entity_type, destination_spreadsheet_id):
     if 'status_updates' not in st.session_state:
@@ -305,7 +345,7 @@ def main():
         page = st.sidebar.selectbox("Select Page", ["Manage Courses", "Manage Jobs"])
         
         if page == "Manage Courses":
-            show_course_page(service, course_spreadsheet_id, "Sheet1", online_courses_spreadsheet_id)
+            show_course_page(service, course_spreadsheet_id, "Form Responses 1", online_courses_spreadsheet_id)
         elif page == "Manage Jobs":
             show_job_page(service, job_spreadsheet_id, "Sheet1", online_jobs_spreadsheet_id)
 

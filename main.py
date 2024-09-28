@@ -9,7 +9,7 @@ from email.mime.multipart import MIMEMultipart
 
 # Set page configuration
 st.set_page_config(layout="wide")
-
+if
 # Helper functions
 def get_google_sheets_service():
     creds = Credentials.from_service_account_info(
@@ -28,9 +28,11 @@ def send_email(recipient_email, full_name, title, status, entity_type):
     message['To'] = recipient_email
     
     if entity_type == "job":
-        message['Subject'] = f'Verification Result of Job Posting "{title}" for TriStep Platform'
+        title_index = headers.index('Job Title') if 'Job Title' in headers else -1
     else:
-        message['Subject'] = f'Verification Result of {entity_type} "{title}" for TriStep Platform'
+        title_index = headers.index('Title') if 'Title' in headers else -1
+    
+    title = row_data[title_index] if title_index != -1 and title_index < len(row_data) else ''
 
     if status == 'Accept':
         if entity_type == "job":

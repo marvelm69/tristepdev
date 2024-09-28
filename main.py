@@ -93,7 +93,7 @@ def append_to_online_courses(service, source_spreadsheet_id, destination_spreads
 
 def get_sheet_data(service, spreadsheet_id, range_name):
     sheet = service.spreadsheets()
-    result = sheet.values().get(spreadsheetId=spreadsheet_id, range=range_name).execute()
+    result = sheet.values().get(spreadsheetId=spreadsheet_id, range=f"'{range_name}'!A:Z").execute()
     values = result.get('values', [])
     
     if not values:
@@ -174,7 +174,7 @@ def update_sheet_cell(service, spreadsheet_id, sheet_name, row, column_name, val
 
 def show_course_page(service, spreadsheet_id, sheet_name, online_courses_spreadsheet_id):
     st.header("Manage Courses")
-    show_management_page(service, spreadsheet_id, sheet_name, "course", online_courses_spreadsheet_id)
+    show_management_page(service, spreadsheet_id, "Form Responses 1", "course", online_courses_spreadsheet_id)
 
 def show_job_page(service, spreadsheet_id, sheet_name, online_jobs_spreadsheet_id):
     st.header("Manage Jobs")

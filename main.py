@@ -93,7 +93,7 @@ def append_to_online_courses(service, source_spreadsheet_id, destination_spreads
 
 def append_to_online_jobs(service, source_spreadsheet_id, destination_spreadsheet_id, source_sheet_name, destination_sheet_name, row_data):
     # Get data from source sheet (all columns)
-    source_range = f"'{source_sheet_name}'!D:Y"
+    source_range = f"'{source_sheet_name}'"
     result = service.spreadsheets().values().get(spreadsheetId=source_spreadsheet_id, range=source_range).execute()
     values = result.get('values', [])
     
@@ -104,22 +104,23 @@ def append_to_online_jobs(service, source_spreadsheet_id, destination_spreadshee
     # Prepare data for destination sheet
     source_data = values[row_data - 1]  # -1 because sheet rows are 1-indexed
     
-    # Append to destination sheet, starting from column A
-    destination_data = [source_data]
-    
-    destination_range = f"'{destination_sheet_name}'!A:A"
+    # Append to destination sheet
+    destination_range = f"'{destination_sheet_name}'"
     body = {
-        'values': destination_data
+        'values': [source_data]
     }
-    result = service.spreadsheets().values().append(
-        spreadsheetId=destination_spreadsheet_id,
-        range=destination_range,
-        valueInputOption='RAW',
-        insertDataOption='INSERT_ROWS',
-        body=body
-    ).execute()
-    
-    return result, headers
+    try:
+        result = service.spreadsheets().values().append(
+            spreadsheetId=destination_spreadsheet_id,
+            range=destination_range,
+            valueInputOption='RAW',
+            insertDataOption='INSERT_ROWS',
+            body=body
+        ).execute()
+        return result, headers
+    except Exception as e:
+        st.error(f"Error appending data: {str(e)}")
+        return None, headers
 
 def get_sheet_data(service, spreadsheet_id, range_name):
     sheet = service.spreadsheets()
@@ -140,17 +141,23 @@ def get_sheet_data(service, spreadsheet_id, range_name):
     return df
 
 def update_sheet_cell(service, spreadsheet_id, sheet_name, row, column_name, value, entity_type):
-    header_range = f"'{sheet_name}'!1:1"
+    header_range = f"'{sheet_name}'"
     result = service.spreadsheets().values().get(spreadsheetId=spreadsheet_id, range=header_range).execute()
-    headers = result.get('values', [])[0]
+    values = result.get('values', [])
+    
+    if not values:
+        st.error("No data found in the sheet.")
+        return False
+    
+    headers = values[0]
     
     try:
-        column_index = headers.index(column_name) + 1
+        column_index = headers.index(column_name)
     except ValueError:
         st.error(f"Column '{column_name}' not found in the sheet headers.")
         return False
     
-    column_letter = chr(64 + column_index)
+    column_letter = chr(65 + column_index)  # A is 65 in ASCII
     range_name = f"'{sheet_name}'!{column_letter}{row}"
     
     body = {
@@ -166,31 +173,27 @@ def update_sheet_cell(service, spreadsheet_id, sheet_name, row, column_name, val
         ).execute()
 
         if column_name == 'Status' and (value == 'Accept' or value == 'Reject'):
-            row_data = service.spreadsheets().values().get(
-                spreadsheetId=spreadsheet_id,
-                range=f"'{sheet_name}'!{row}:{row}"
-            ).execute().get('values', [[]])[0]
+            row_data = values[row - 1] if row <= len(values) else []
 
             gmail_index = headers.index('Gmail') if 'Gmail' in headers else -1
             full_name_index = headers.index('Full Name') if 'Full Name' in headers else -1
             title_index = headers.index('Title') if 'Title' in headers else -1
 
-            recipient_email = row_data[gmail_index] if gmail_index != -1 else ''
-            full_name = row_data[full_name_index] if full_name_index != -1 else ''
-            title = row_data[title_index] if title_index != -1 else ''
+            recipient_email = row_data[gmail_index] if gmail_index != -1 and gmail_index < len(row_data) else ''
+            full_name = row_data[full_name_index] if full_name_index != -1 and full_name_index < len(row_data) else ''
+            title = row_data[title_index] if title_index != -1 and title_index < len(row_data) else ''
 
-            # Send email notification
             if recipient_email and full_name and title:
                 if send_email(recipient_email, full_name, title, value, entity_type):
                     st.success(f"Email sent to {recipient_email}")
                 else:
                     st.error(f"Failed to send email to {recipient_email}")
             else:
-                st.warning("Unable to send email due to missing information.")
+                st.warning(f"Unable to send email due to missing information. Email: {recipient_email}, Name: {full_name}, Title: {title}")
 
         # Append to the destination sheet if the status is "Accept"
         if value == 'Accept' and entity_type == "job":
-            destination_spreadsheet_id = "1AlunlNxwIM664-1SC08Ankuka6zlNmQoQ3BoMoYQFBg"
+            destination_spreadsheet_id = st.secrets["google_sheets_job"]["online_jobs_spreadsheet_id"]
             append_result, source_headers = append_to_online_jobs(service, spreadsheet_id, destination_spreadsheet_id, sheet_name, "Sheet1", row)
             if append_result:
                 st.success(f"Data from row {row} has been added to the Online_Jobs sheet.")

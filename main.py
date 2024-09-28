@@ -9,7 +9,6 @@ from email.mime.multipart import MIMEMultipart
 
 # Set page configuration
 st.set_page_config(layout="wide")
-if
 # Helper functions
 def get_google_sheets_service():
     creds = Credentials.from_service_account_info(

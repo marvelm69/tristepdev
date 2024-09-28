@@ -340,7 +340,7 @@ def main():
         page = st.sidebar.selectbox("Select Page", ["Manage Courses", "Manage Jobs"])
         
         if page == "Manage Courses":
-            show_course_page(service, course_spreadsheet_id, "Form Responses 1", online_courses_spreadsheet_id)
+            show_course_page(service, course_spreadsheet_id, "Form Responses 1", "1PM_ifqhHQbvVau26xH2rU7xEw8ib1t2D6s_eDRPzJVI")
         elif page == "Manage Jobs":
             show_job_page(service, job_spreadsheet_id, "Sheet1", online_jobs_spreadsheet_id)
 

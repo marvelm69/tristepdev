@@ -18,18 +18,17 @@ def get_google_sheets_service():
     service = build('sheets', 'v4', credentials=creds)
     return service
 
-def send_email(recipient_email, full_name, title, status, is_course=True):
+def send_email(recipient_email, full_name, title, status):
     sender_email = "tristepcompany@gmail.com"
     sender_password = "yuvc rpls jtwy btle"  # Use Gmail App Password
 
     message = MIMEMultipart()
     message['From'] = sender_email
     message['To'] = recipient_email
-    
-    if is_course:
-        message['Subject'] = f'Verification Result of Online Course "{title}" for TriStep Platform'
-        if status == 'Accept':
-            body = f'''
+    message['Subject'] = f'Verification Result of Online Course "{title}" for TriStep Platform'
+
+    if status == 'Accept':
+        body = f'''
 Dear {full_name},
 
 Congratulations! We are pleased to inform you that your online course, "{title}", has been approved for the TRISTEP platform. Your course aligns well with our content standards, and we believe it will be a valuable addition to our offerings.
@@ -38,9 +37,9 @@ Thank you for your contribution to our learning community. We look forward to se
 
 Best regards,
 TRISTEP Admin
-            '''
-        else:  # Reject
-            body = f'''
+        '''
+    else:  # Reject
+        body = f'''
 Dear {full_name},
 
 Thank you for submitting your online course, "{title}", for consideration on the TRISTEP platform. After a thorough review by our team, we regret to inform you that your course does not fully align with our current content standards, and therefore we cannot proceed with its approval at this time.
@@ -51,33 +50,7 @@ Thank you for your understanding and continued interest in contributing to TRIST
 
 Best regards,
 TRISTEP Admin
-            '''
-    else:  # Job
-        message['Subject'] = f'Verification Result of Job Posting "{title}" for TriStep Platform'
-        if status == 'Accept':
-            body = f'''
-Dear {full_name},
-
-We are pleased to inform you that your job posting, "{title}", has been approved for the TRISTEP platform. Your posting meets our requirements and will be visible to potential candidates.
-
-Thank you for choosing TRISTEP for your recruitment needs. We hope you find suitable candidates soon.
-
-Best regards,
-TRISTEP Admin
-            '''
-        else:  # Reject
-            body = f'''
-Dear {full_name},
-
-Thank you for submitting your job posting, "{title}", to the TRISTEP platform. After review, we regret to inform you that we cannot approve this posting at this time.
-
-We encourage you to review our job posting guidelines and resubmit if appropriate. If you have any questions, please don't hesitate to contact us.
-
-Thank you for your understanding.
-
-Best regards,
-TRISTEP Admin
-            '''
+        '''
 
     message.attach(MIMEText(body, 'plain'))
 
@@ -143,7 +116,7 @@ def get_sheet_data(service, spreadsheet_id, range_name):
     df = pd.DataFrame(rows, columns=headers)
     return df
 
-def update_sheet_cell(service, spreadsheet_id, sheet_name, row, column_name, value, is_course=True):
+def update_sheet_cell(service, spreadsheet_id, sheet_name, row, column_name, value):
     # Get the header row from the sheet
     header_range = f"'{sheet_name}'!1:1"  # Assumes headers are in the first row
     result = service.spreadsheets().values().get(spreadsheetId=spreadsheet_id, range=header_range).execute()
@@ -196,13 +169,13 @@ def update_sheet_cell(service, spreadsheet_id, sheet_name, row, column_name, val
             title = row_data[title_index]
 
             # Send email
-            if send_email(recipient_email, full_name, title, value, is_course):
+            if send_email(recipient_email, full_name, title, value):
                 st.success(f"Email sent to {recipient_email}")
             else:
                 st.error(f"Failed to send email to {recipient_email}")
 
-        # If status is changed to 'Accept' and it's a course, append data to Online_Courses
-        if is_course and value == 'Accept':
+        # If status is changed to 'Accept', append data to Online_Courses
+        if value == 'Accept':
             destination_spreadsheet_id = "1PM_ifqhHQbvVau26xH2rU7xEw8ib1t2D6s_eDRPzJVI"  # ID for Online_Courses sheet
             append_result = append_to_online_courses(service, spreadsheet_id, destination_spreadsheet_id, sheet_name, "Online_Courses", row)
             if append_result:
@@ -232,28 +205,17 @@ def show_login_page():
 def check_credentials(username, password):
     return username == st.secrets["app"]["username"] and password == st.secrets["app"]["password"]
 
-def show_main_page(service):
-    st.title("TriStep Admin Dashboard")
-    
-    # Add a sidebar for navigation
-    page = st.sidebar.radio("Select a page", ["Courses", "Jobs"])
-    
-    if page == "Courses":
-        show_courses_page(service)
-    elif page == "Jobs":
-        show_jobs_page(service)
-    
-    # Logout button
-    if st.sidebar.button("Logout", key="logout_button"):
-        st.session_state['logged_in'] = False
-        st.rerun()
+def show_main_page(service, spreadsheet_id, sheet_name, online_courses_spreadsheet_id):
+    if 'status_updates' not in st.session_state:
+        st.session_state.status_updates = {}
 
-def show_courses_page(service):
-    st.header("Course Management")
+    col1, col2, col3 = st.columns([3,1,1])
+    with col3:
+        if st.button("Logout", key="logout_button"):
+            st.session_state['logged_in'] = False
+            st.rerun()
     
-    spreadsheet_id = st.secrets["google_sheets"]["spreadsheet_id"]
-    sheet_name = st.secrets["google_sheets"]["worksheet_name"]
-    
+    st.header("Data from Google Sheets")
     try:
         df = get_sheet_data(service, spreadsheet_id, sheet_name)
         
@@ -284,14 +246,14 @@ def show_courses_page(service):
             if not years:
                 st.error("No valid years found in the data.")
                 return
-            selected_year = st.selectbox("Select Year", years, key="course_year")
+            selected_year = st.selectbox("Select Year", years)
         
         with col2:
             months = [
                 "January", "February", "March", "April", "May", "June", 
                 "July", "August", "September", "October", "November", "December"
             ]
-            selected_month = st.selectbox("Select Month", months, key="course_month")
+            selected_month = st.selectbox("Select Month", months)
         
         # Apply filters
         filtered_df = df[
@@ -316,7 +278,7 @@ def show_courses_page(service):
                 )
             },
             hide_index=True,
-            key="course_data_editor"
+            key="data_editor"
         )
         
         # Check for changes in the Status column
@@ -336,129 +298,11 @@ def show_courses_page(service):
         st.info(f"Showing {len(filtered_df)} rows for {selected_month} {selected_year}")
         
         # Save button
-        if st.button("Save Status Changes", key="save_course_status_changes", disabled=not status_changed):
+        if st.button("Save Status Changes", key="save_status_changes", disabled=not status_changed):
             if st.session_state.status_updates:
                 for row, new_status in st.session_state.status_updates.items():
                     try:
-                        if update_sheet_cell(service, spreadsheet_id, sheet_name, row, 'Status', new_status, is_course=True):
-                            st.success(f"Updated status for row {row} to {new_status}")
-                        else:
-                            st.error(f"Failed to update status for row {row}")
-                    except Exception as e:
-                        st.error(f"Error updating row {row}: {str(e)}")
-                
-                # Clear status updates after saving
-                st.session_state.status_updates.clear()
-                st.rerun()  # Refresh the page to show updated data
-            else:
-                st.info("No changes to save.")
-        
-        # New table for Accepted entries
-        st.subheader("Accepted Entries")
-        accepted_df = filtered_df[filtered_df['Status'] == 'Accept']
-        if accepted_df.empty:
-            st.info("No accepted entries for the selected period.")
-        else:
-            st.dataframe(accepted_df, hide_index=True)
-            st.info(f"Showing {len(accepted_df)} accepted entries for {selected_month} {selected_year}")
-        
-    except Exception as e:
-        st.error(f"An error occurred: {str(e)}")
-        st.info("Please check your Sheet ID and Sheet Name in the secrets configuration.")
-
-def show_jobs_page(service):
-    st.header("Job Management")
-    
-    spreadsheet_id = "1AlunlNxwIM664-1SC08Ankuka6zlNmQoQ3BoMoYQFBg"
-    sheet_name = "preprocessed_linkedin"
-    
-    try:
-        df = get_sheet_data(service, spreadsheet_id, sheet_name)
-        
-        # Check if 'date_posted' column exists
-        if 'date_posted' not in df.columns:
-            st.error("The 'date_posted' column is missing from the sheet data.")
-            return
-        
-        # Convert 'date_posted' column to datetime
-        df['date_posted'] = pd.to_datetime(df['date_posted'], errors='coerce')
-        
-        # Handle cases where date conversion fails
-        if df['date_posted'].isnull().all():
-            st.error("Unable to parse any dates from the 'date_posted' column. Please check the data format.")
-            return
-        
-        # Remove rows with NaT (Not a Time) values in date_posted
-        df = df.dropna(subset=['date_posted'])
-        
-        if df.empty:
-            st.warning("No valid data remaining after filtering out rows with invalid dates.")
-            return
-        
-        # Create filters
-        col1, col2 = st.columns(2)
-        with col1:
-            years = sorted(df['date_posted'].dt.year.unique(), reverse=True)
-            if not years:
-                st.error("No valid years found in the data.")
-                return
-            selected_year = st.selectbox("Select Year", years, key="job_year")
-        
-        with col2:
-            months = [
-                "January", "February", "March", "April", "May", "June", 
-                "July", "August", "September", "October", "November", "December"
-            ]
-            selected_month = st.selectbox("Select Month", months, key="job_month")
-        
-        # Apply filters
-        filtered_df = df[
-            (df['date_posted'].dt.year == selected_year) & 
-            (df['date_posted'].dt.month == months.index(selected_month) + 1)
-        ]
-        
-        if filtered_df.empty:
-            st.warning(f"No data available for {selected_month} {selected_year}")
-            return
-        
-        st.subheader("All Entries")
-        # Use st.data_editor for an editable table
-        edited_df = st.data_editor(
-            filtered_df,
-            column_config={
-                "date_posted": st.column_config.DatetimeColumn("Date Posted", disabled=True),
-                "Status": st.column_config.SelectboxColumn(
-                    "Status",
-                    options=['', 'Accept', 'Reject'],
-                    required=False
-                )
-            },
-            hide_index=True,
-            key="job_data_editor"
-        )
-        
-        # Check for changes in the Status column
-        status_changed = False
-        for index, row in edited_df.iterrows():
-            if row['Status'] != filtered_df.loc[index, 'Status']:
-                status_changed = True
-                # Use index + 2 to account for 0-indexing and header row in Google Sheets
-                st.session_state.status_updates[index + 2] = row['Status']
-        
-        # Display information about empty columns
-        empty_cols = filtered_df.columns[filtered_df.isna().all()].tolist()
-        if empty_cols:
-            st.warning(f"The following columns are empty or have no data: {', '.join(empty_cols)}")
-        
-        # Display row count
-        st.info(f"Showing {len(filtered_df)} rows for {selected_month} {selected_year}")
-        
-        # Save button
-        if st.button("Save Status Changes", key="save_job_status_changes", disabled=not status_changed):
-            if st.session_state.status_updates:
-                for row, new_status in st.session_state.status_updates.items():
-                    try:
-                        if update_sheet_cell(service, spreadsheet_id, sheet_name, row, 'Status', new_status, is_course=False):
+                        if update_sheet_cell(service, spreadsheet_id, sheet_name, row, 'Status', new_status):
                             st.success(f"Updated status for row {row} to {new_status}")
                         else:
                             st.error(f"Failed to update status for row {row}")
@@ -487,15 +331,15 @@ def show_jobs_page(service):
 def main():
     if 'logged_in' not in st.session_state:
         st.session_state['logged_in'] = False
-    
-    if 'status_updates' not in st.session_state:
-        st.session_state.status_updates = {}
 
     if not st.session_state['logged_in']:
         show_login_page()
     else:
         service = get_google_sheets_service()
-        show_main_page(service)
+        spreadsheet_id = st.secrets["google_sheets"]["spreadsheet_id"]
+        sheet_name = st.secrets["google_sheets"]["worksheet_name"]
+        online_courses_spreadsheet_id = st.secrets["google_sheets"]["online_courses_spreadsheet_id"]
+        show_main_page(service, spreadsheet_id, sheet_name, online_courses_spreadsheet_id)
 
 if __name__ == "__main__":
     main()

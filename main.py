@@ -92,8 +92,8 @@ def append_to_online_courses(service, source_spreadsheet_id, destination_spreads
     return result
 
 def append_to_online_jobs(service, source_spreadsheet_id, destination_spreadsheet_id, source_sheet_name, destination_sheet_name, row_data):
-    # Get data from source sheet (all columns)
-    source_range = f"'{source_sheet_name}'"
+    # Get data from source sheet (columns D to Y)
+    source_range = f"'{source_sheet_name}'!D:Y"
     result = service.spreadsheets().values().get(spreadsheetId=source_spreadsheet_id, range=source_range).execute()
     values = result.get('values', [])
     
@@ -104,24 +104,26 @@ def append_to_online_jobs(service, source_spreadsheet_id, destination_spreadshee
     # Prepare data for destination sheet
     source_data = values[row_data - 1]  # -1 because sheet rows are 1-indexed
     
+    # Ensure we have exactly 22 columns (A to V)
+    if len(source_data) < 22:
+        source_data.extend([''] * (22 - len(source_data)))
+    elif len(source_data) > 22:
+        source_data = source_data[:22]
+    
     # Append to destination sheet
-    destination_range = f"'{destination_sheet_name}'"
-    body = {
-        'values': [source_data]
-    }
     try:
         result = service.spreadsheets().values().append(
             spreadsheetId=destination_spreadsheet_id,
-            range=destination_range,
+            range=f"{destination_sheet_name}!A:V",  # Specify the range A:V
             valueInputOption='RAW',
             insertDataOption='INSERT_ROWS',
-            body=body
+            body={'values': [source_data]}
         ).execute()
         return result, headers
     except Exception as e:
         st.error(f"Error appending data: {str(e)}")
         return None, headers
-
+        
 def get_sheet_data(service, spreadsheet_id, range_name):
     sheet = service.spreadsheets()
     result = sheet.values().get(spreadsheetId=spreadsheet_id, range=f"'{range_name}'!A:Z").execute()
@@ -204,7 +206,6 @@ def update_sheet_cell(service, spreadsheet_id, sheet_name, row, column_name, val
     except Exception as e:
         st.error(f"Error updating cell: {str(e)}")
         return False
-
 
 def show_course_page(service, spreadsheet_id, sheet_name, online_courses_spreadsheet_id):
     st.header("Manage Courses")

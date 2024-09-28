@@ -26,12 +26,13 @@ def send_email(recipient_email, full_name, title, status, entity_type):
     message['From'] = sender_email
     message['To'] = recipient_email
     
+    # Inside update_sheet_cell function
     if entity_type == "job":
-        title_index = headers.index('Job Title') if 'Job Title' in headers else -1
+        job_title_index = headers.index('Job Title') if 'Job Title' in headers else -1
+        title = row_data[job_title_index] if job_title_index != -1 and job_title_index < len(row_data) else ''
     else:
         title_index = headers.index('Title') if 'Title' in headers else -1
-    
-    title = row_data[title_index] if title_index != -1 and title_index < len(row_data) else ''
+        title = row_data[title_index] if title_index != -1 and title_index < len(row_data) else ''
 
     if status == 'Accept':
         if entity_type == "job":

@@ -92,37 +92,36 @@ def append_to_online_courses(service, source_spreadsheet_id, destination_spreads
     return result
 
 def append_to_online_jobs(service, source_spreadsheet_id, destination_spreadsheet_id, source_sheet_name, destination_sheet_name, row_data):
-    # Get data from source sheet (columns D to Y)
-    source_range = f"'{source_sheet_name}'!D:Y"
+    # Get data from source sheet (columns D to T)
+    source_range = f"'{source_sheet_name}'!D:T"
     result = service.spreadsheets().values().get(spreadsheetId=source_spreadsheet_id, range=source_range).execute()
     values = result.get('values', [])
     
     if not values:
         raise Exception('No data found in source sheet.')
     
-    headers = values[0]
     # Prepare data for destination sheet
     source_data = values[row_data - 1]  # -1 because sheet rows are 1-indexed
     
-    # Ensure we have exactly 22 columns (D to Y)
-    if len(source_data) < 22:
-        source_data.extend([''] * (22 - len(source_data)))
-    elif len(source_data) > 22:
-        source_data = source_data[:22]
+    # Ensure we have exactly 17 columns (D to T)
+    if len(source_data) < 17:
+        source_data.extend([''] * (17 - len(source_data)))
+    elif len(source_data) > 17:
+        source_data = source_data[:17]
     
     # Append to destination sheet
     try:
         result = service.spreadsheets().values().append(
             spreadsheetId=destination_spreadsheet_id,
-            range=f"{destination_sheet_name}!A:V",  # Specify the range A:V in the destination sheet
+            range=f"{destination_sheet_name}!A:Q",  # Specify the range A:Q in the destination sheet
             valueInputOption='RAW',
             insertDataOption='INSERT_ROWS',
             body={'values': [source_data]}
         ).execute()
-        return result, headers
+        return result
     except Exception as e:
         st.error(f"Error appending data: {str(e)}")
-        return None, headers
+        return None
         
 def get_sheet_data(service, spreadsheet_id, range_name):
     sheet = service.spreadsheets()

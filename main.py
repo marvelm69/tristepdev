@@ -196,7 +196,7 @@ def update_sheet_cell(service, spreadsheet_id, sheet_name, row, column_name, val
         # Append to the destination sheet if the status is "Accept"
         if value == 'Accept' and entity_type == "job":
             destination_spreadsheet_id = st.secrets["google_sheets_job"]["online_jobs_spreadsheet_id"]
-            append_result, source_headers = append_to_online_jobs(service, spreadsheet_id, destination_spreadsheet_id, "Sheet1", "preprocessed_linkedin", row)
+            append_result, source_headers = append_to_online_jobs(service, spreadsheet_id, destination_spreadsheet_id, "Form Responses 1", "Sheet1", row)
             if append_result:
                 st.success(f"Data from row {row} has been added to the Online_Jobs sheet.")
             else:

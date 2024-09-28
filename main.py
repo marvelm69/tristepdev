@@ -212,7 +212,7 @@ def show_course_page(service, spreadsheet_id, sheet_name, online_courses_spreads
 
 def show_job_page(service, spreadsheet_id, sheet_name, online_jobs_spreadsheet_id):
     st.header("Manage Jobs")
-    show_management_page(service, spreadsheet_id, sheet_name, "job", online_jobs_spreadsheet_id)
+    show_management_page(service, spreadsheet_id, "Form Responses 1", "job", online_jobs_spreadsheet_id)
 
 def show_management_page(service, spreadsheet_id, sheet_name, entity_type, destination_spreadsheet_id):
     if 'status_updates' not in st.session_state:
@@ -299,7 +299,7 @@ def show_management_page(service, spreadsheet_id, sheet_name, entity_type, desti
             if st.session_state.status_updates:
                 for row, new_status in st.session_state.status_updates.items():
                     try:
-                        if update_sheet_cell(service, spreadsheet_id, sheet_name, row, 'Status', new_status, entity_type):
+                        if update_sheet_cell(service, spreadsheet_id, "Form Responses 1", row, 'Status', new_status, entity_type):
                             st.success(f"Updated status for row {row} to {new_status}")
                         else:
                             st.error(f"Failed to update status for row {row}")

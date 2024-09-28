@@ -182,12 +182,12 @@ def show_courses_page(service):
     spreadsheet_id = st.secrets["google_sheets"]["spreadsheet_id"]
     sheet_name = st.secrets["google_sheets"]["worksheet_name"]
     online_courses_spreadsheet_id = st.secrets["google_sheets"]["online_courses_spreadsheet_id"]
+    online_courses_sheet_name = "Sheet1"  # atau sesuaikan dengan nama sheet yang benar
     
     st.header("Course Management")
-    show_data_page(service, spreadsheet_id, sheet_name, online_courses_spreadsheet_id, is_course=True)
+    show_data_page(service, spreadsheet_id, sheet_name, online_courses_spreadsheet_id, online_courses_sheet_name, is_course=True)
 
 def show_jobs_page(service):
-    # Updated spreadsheet IDs for jobs
     job_spreadsheet_id = "1ym1Y-CM3mDp9QVPqIAj-C1WKSJ9eSB22oQT5BMOZ_c4"
     job_sheet_name = "Sheet1"
     approved_jobs_spreadsheet_id = "1AlunlNxwIM664-1SC08Ankuka6zlNmQoQ3BoMoYQFBg"

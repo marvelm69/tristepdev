@@ -93,7 +93,7 @@ def append_to_online_courses(service, source_spreadsheet_id, destination_spreads
 
 def append_to_online_jobs(service, source_spreadsheet_id, destination_spreadsheet_id, source_sheet_name, destination_sheet_name, row_data):
     # Get data from source sheet (all columns)
-    source_range = f"'{source_sheet_name}'!A:Z"
+    source_range = f"'{source_sheet_name}'!D:Y"
     result = service.spreadsheets().values().get(spreadsheetId=source_spreadsheet_id, range=source_range).execute()
     values = result.get('values', [])
     

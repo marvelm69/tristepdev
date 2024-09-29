@@ -82,9 +82,12 @@ def append_to_online_courses(service, source_spreadsheet_id, destination_spreads
     elif len(source_data) > 14:
         source_data = source_data[:14]
     
-    destination_range = f"'{destination_sheet_name}'!B:O"
+    # Add an empty string at the beginning to shift data to start from column B
+    destination_data = [''] + source_data
+    
+    destination_range = f"'{destination_sheet_name}'!A:O"
     body = {
-        'values': [source_data]
+        'values': [destination_data]
     }
     
     try:

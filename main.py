@@ -351,7 +351,7 @@ def main():
         course_spreadsheet_id = st.secrets["google_sheets"]["spreadsheet_id"]
         job_spreadsheet_id = st.secrets["google_sheets_job"]["spreadsheet_id"]
         online_jobs_spreadsheet_id = st.secrets["google_sheets_job"]["online_jobs_spreadsheet_id"]
-        online_jobs_spreadsheet_id = "1OYeOlipgcnGnRrEqHisVCvjF28ukiEr-5ktk8BoTmzk"
+        online_jobs_spreadsheet_id = "1huKbxP4W5c5sBWAQ5LzerhdId6TR9glCRFKn7DNOKEE"
         
         page = st.sidebar.selectbox("Select Page", ["Manage Courses", "Manage Jobs"])
         

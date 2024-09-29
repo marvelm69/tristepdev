@@ -92,7 +92,6 @@ def append_to_online_courses(service, source_spreadsheet_id, destination_spreads
     return result
 
 def append_to_online_jobs(service, source_spreadsheet_id, destination_spreadsheet_id, source_sheet_name, destination_sheet_name, row_data):
-    # Get data from source sheet (columns D to T)
     source_range = f"'{source_sheet_name}'!D:T"
     result = service.spreadsheets().values().get(spreadsheetId=source_spreadsheet_id, range=source_range).execute()
     values = result.get('values', [])
@@ -100,7 +99,6 @@ def append_to_online_jobs(service, source_spreadsheet_id, destination_spreadshee
     if not values:
         raise Exception('No data found in source sheet.')
     
-    # Prepare data for destination sheet
     source_data = values[row_data - 1]  # -1 because sheet rows are 1-indexed
     
     # Ensure we have exactly 17 columns (D to T)
@@ -109,7 +107,6 @@ def append_to_online_jobs(service, source_spreadsheet_id, destination_spreadshee
     elif len(source_data) > 17:
         source_data = source_data[:17]
     
-    # Append to destination sheet
     try:
         result = service.spreadsheets().values().append(
             spreadsheetId=destination_spreadsheet_id,
@@ -195,7 +192,7 @@ def update_sheet_cell(service, spreadsheet_id, sheet_name, row, column_name, val
         # Append to the destination sheet if the status is "Accept"
         if value == 'Accept' and entity_type == "job":
             destination_spreadsheet_id = st.secrets["google_sheets_job"]["online_jobs_spreadsheet_id"]
-            append_result, source_headers = append_to_online_jobs(service, spreadsheet_id, destination_spreadsheet_id, "Form Responses 1", "Sheet1", row)
+            append_result = append_to_online_jobs(service, spreadsheet_id, destination_spreadsheet_id, "Form Responses 1", "Sheet1", row)
             if append_result:
                 st.success(f"Data from row {row} has been added to the Online_Jobs sheet.")
             else:

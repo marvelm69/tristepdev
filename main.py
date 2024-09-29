@@ -75,21 +75,30 @@ def append_to_online_courses(service, source_spreadsheet_id, destination_spreads
         raise Exception('No data found in source sheet.')
     
     source_data = values[row_data - 1]  # -1 because sheet rows are 1-indexed
-    destination_data = [[''] + source_data]
     
-    destination_range = f"'{destination_sheet_name}'!A:O"
+    # Ensure we have exactly 14 columns (D to Q)
+    if len(source_data) < 14:
+        source_data.extend([''] * (14 - len(source_data)))
+    elif len(source_data) > 14:
+        source_data = source_data[:14]
+    
+    destination_range = f"'{destination_sheet_name}'!B:O"
     body = {
-        'values': destination_data
+        'values': [source_data]
     }
-    result = service.spreadsheets().values().append(
-        spreadsheetId=destination_spreadsheet_id,
-        range=destination_range,
-        valueInputOption='RAW',
-        insertDataOption='INSERT_ROWS',
-        body=body
-    ).execute()
     
-    return result
+    try:
+        result = service.spreadsheets().values().append(
+            spreadsheetId=destination_spreadsheet_id,
+            range=destination_range,
+            valueInputOption='RAW',
+            insertDataOption='INSERT_ROWS',
+            body=body
+        ).execute()
+        return result
+    except Exception as e:
+        st.error(f"Error appending course data: {str(e)}")
+        return None
 
 def append_to_online_jobs(service, source_spreadsheet_id, destination_spreadsheet_id, source_sheet_name, destination_sheet_name, row_data):
     source_range = f"'{source_sheet_name}'!D:T"
@@ -190,13 +199,21 @@ def update_sheet_cell(service, spreadsheet_id, sheet_name, row, column_name, val
                 st.warning(f"Unable to send email due to missing information. Email: {recipient_email}, Name: {full_name}, Title: {title}")
 
         # Append to the destination sheet if the status is "Accept"
-        if value == 'Accept' and entity_type == "job":
-            destination_spreadsheet_id = st.secrets["google_sheets_job"]["online_jobs_spreadsheet_id"]
-            append_result = append_to_online_jobs(service, spreadsheet_id, destination_spreadsheet_id, "Form Responses 1", "Sheet1", row)
-            if append_result:
-                st.success(f"Data from row {row} has been added to the Online_Jobs sheet.")
-            else:
-                st.error(f"Failed to add data from row {row} to the Online_Jobs sheet.")
+        if value == 'Accept':
+            if entity_type == "job":
+                destination_spreadsheet_id = st.secrets["google_sheets_job"]["online_jobs_spreadsheet_id"]
+                append_result = append_to_online_jobs(service, spreadsheet_id, destination_spreadsheet_id, "Form Responses 1", "Sheet1", row)
+                if append_result:
+                    st.success(f"Data from row {row} has been added to the Online_Jobs sheet.")
+                else:
+                    st.error(f"Failed to add data from row {row} to the Online_Jobs sheet.")
+            elif entity_type == "course":
+                destination_spreadsheet_id = st.secrets["google_sheets"]["online_courses_spreadsheet_id"]
+                append_result = append_to_online_courses(service, spreadsheet_id, destination_spreadsheet_id, "Form Responses 1", "Online_Courses", row)
+                if append_result:
+                    st.success(f"Data from row {row} has been added to the Online_Courses sheet.")
+                else:
+                    st.error(f"Failed to add data from row {row} to the Online_Courses sheet.")
 
         return True
     except Exception as e:
